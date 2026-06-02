@@ -18,4 +18,20 @@ CMakeUserPresets.json
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #cmake-build-*
 
+# 编译生成文件
 build/
+*.exe
+*.obj
+*.pdb
+*.ilk
+*.log
+*.tlog/
+*.vsidx
+*.suo
+*.db
+*.recipe
+*.lastbuildstate
+
+# IDE 目录
+.vs/
+.vscode/

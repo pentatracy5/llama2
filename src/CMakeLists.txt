@@ -1,11 +1,10 @@
-# CMake 最低版本号要求
-cmake_minimum_required (VERSION 4.3.3)
+# src/CMakeLists.txt
+# 添加 core 子模块
+add_subdirectory(core)
 
-# 项目信息
-project (Demo)
+# 主可执行文件
+add_executable(Llama2 main.cpp)
 
-# 指定生成目标
-add_executable(Demo main.cpp MathFunctions.cpp)
-
-# 把当前源码路径加入头文件搜索路径
-target_include_directories(Demo PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+# 链接 core 库
+# PRIVATE 表示 Llama2 自己用 core，但依赖 Llama2 的目标不需要知道 core
+target_link_libraries(Llama2 PRIVATE core)

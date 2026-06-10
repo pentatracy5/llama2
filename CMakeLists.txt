@@ -11,6 +11,9 @@ find_package(CUDAToolkit REQUIRED)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# 自动探测 当前机器的 GPU 并生成对应代码
+set(CMAKE_CUDA_ARCHITECTURES "native")
+
 include(FetchContent)
 FetchContent_Declare(
   googletest

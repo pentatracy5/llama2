@@ -2,19 +2,19 @@
 #include <core/Tensor.cuh>
 
 template <typename T>
-__global__ void Embedding(const int *input_ids,
-                          T *output,
+__global__ void Embedding(const unsigned int num_input_ids,
+                          const unsigned int embed_dim,
+                          const int *input_ids,
                           const T *embed_table,
-                          const unsigned int max_context_token_num,
-                          const unsigned int embed_dim)
+                          T *output)
 {
-    int element_id = blockIdx.x * blockDim.x + threadIdx.x;
-    int stride = blockDim.x * gridDim.x;
-    while (element_id < max_context_token_num * embed_dim)
+    unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    unsigned int stride = blockDim.x * gridDim.x;
+    while (idx < num_input_ids * embed_dim)
     {
-        int token_id = element_id / embed_dim;
-        output[element_id] = embed_table[input_ids[token_id] * embed_dim + (element_id - token_id * embed_dim)];
-        element_id += stride;
+        unsigned int token_id = idx / embed_dim;
+        output[idx] = embed_table[input_ids[token_id] * embed_dim + (idx - token_id * embed_dim)];
+        idx += stride;
     }
 }
 
@@ -25,11 +25,11 @@ void EmbeddingLauncher(const Tensor<int> &input_ids,
 {
     const dim3 nthreads{256 * 512};
     const dim3 threads_per_block{512};
-    CUDA_LAUNCH(Embedding, nthreads, threads_per_block)(input_ids.data(),
-                                                        output.data(),
+    CUDA_LAUNCH(Embedding, nthreads, threads_per_block)(input_ids.shape()[0],
+                                                        embed_table.shape()[1],
+                                                        input_ids.data(),
                                                         embed_table.data(),
-                                                        input_ids.shape()[0],
-                                                        embed_table.shape()[1]);
+                                                        output.data());
 }
 
-template void EmbeddingLauncher<float>(const Tensor<int>&, Tensor<float>&, const Tensor<float>&);
+template void EmbeddingLauncher<float>(const Tensor<int> &, Tensor<float> &, const Tensor<float> &);

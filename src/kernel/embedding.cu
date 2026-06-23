@@ -20,8 +20,8 @@ __global__ void embedding_kernel(const unsigned int num_input_ids,
 
 template <typename T>
 void launch_embedding(const Tensor<int> &input_ids,
-                      Tensor<T> &output,
-                      const Tensor<T> &embed_table)
+                      const Tensor<T> &embed_table,
+                      Tensor<T> &output)
 {
     const dim3 nthreads{256 * 512};
     const dim3 threads_per_block{512};
@@ -32,4 +32,4 @@ void launch_embedding(const Tensor<int> &input_ids,
                                                                output.data());
 }
 
-template void launch_embedding<float>(const Tensor<int> &, Tensor<float> &, const Tensor<float> &);
+template void launch_embedding<float>(const Tensor<int> &, const Tensor<float> &, Tensor<float> &);

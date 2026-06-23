@@ -36,4 +36,5 @@ void launch_build_padding_index_maps(const Tensor<int> &input_ids,
                                                                               seq_lens.data(),
                                                                               unpad_to_padded_idx.data(),
                                                                               seq_offsets.data());
+    CUDA_KERNEL_LAUNCH_CHECK();
 }

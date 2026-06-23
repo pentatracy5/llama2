@@ -32,6 +32,7 @@ void launch_embedding(const Tensor<int> &input_ids,
                                                                input_ids.data(),
                                                                embed_table.data(),
                                                                output.data());
+    CUDA_KERNEL_LAUNCH_CHECK();
 }
 
 template void launch_embedding<float>(const Tensor<int> &, const Tensor<float> &, Tensor<float> &);

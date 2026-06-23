@@ -61,14 +61,17 @@ TEST(EmbeddingTest, BasicLookup)
     }
 }
 
-TEST(EmbeddingTest, SingleTokenSingleDim)
+TEST(EmbeddingTest, SingleTokenFourDim)
 {
     const unsigned int vocab_size = 3;
-    const unsigned int embed_dim = 1;
+    const unsigned int embed_dim = 4;
     const unsigned int token_num = 1;
 
     std::vector<int> input_ids_h = {2};
-    std::vector<float> table_h = {0.0f, 1.0f, 2.0f};
+    std::vector<float> table_h = {
+        0.0f, 1.0f, 2.0f, 3.0f,
+        4.0f, 5.0f, 6.0f, 7.0f,
+        8.0f, 9.0f, 10.0f, 11.0f};
 
     Tensor<int> input_ids({token_num}, GPU);
     Tensor<float> embed_table({vocab_size, embed_dim}, GPU);
@@ -86,7 +89,10 @@ TEST(EmbeddingTest, SingleTokenSingleDim)
     CUDA_CHECK(cudaMemcpy(output_h.data(), output.data(),
                           output.numel() * sizeof(float), cudaMemcpyDeviceToHost));
 
-    ASSERT_EQ(output_h.data()[0], 2.0f);
+    for (unsigned int d = 0; d < embed_dim; ++d)
+    {
+        ASSERT_EQ(output_h.data()[d], table_h[2 * embed_dim + d]);
+    }
 }
 
 TEST(EmbeddingTest, RepeatedIndex)

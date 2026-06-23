@@ -2,7 +2,6 @@
 
 #include <cuda_runtime.h>
 #include <iostream>
-#include <common/types.h>
 
 #define NBS_PER_DIM(n_threads, threads_per_block)   ((n_threads + threads_per_block - 1) / threads_per_block)
 #define N_BLOCKS(n_threads, threads_per_block)      (dim3{NBS_PER_DIM(n_threads.x, threads_per_block.x), NBS_PER_DIM(n_threads.y, threads_per_block.y), NBS_PER_DIM(n_threads.z, threads_per_block.z)})
@@ -91,8 +90,4 @@ T __shfl_sync(unsigned mask, T var, int srcLane, int width = 32);
         }                                                                        \
     } while (0)
 
-#define FETCH_FLOAT2(var) (reinterpret_cast<float2*>(&(var))[0])
-#define FETCH_FLOAT4(var) (reinterpret_cast<float4*>(&(var))[0])
-#define FETCH_HALF2(var) (reinterpret_cast<__half2*>(&(var))[0])
-#define FETCH_HALF8(var) (reinterpret_cast<__half8*>(&(var))[0])
-#define FETCH_CHAR4(var) (reinterpret_cast<char4*>(&(var))[0])
+#define FETCH_VEC(TYPE, var) (reinterpret_cast<TYPE*>(&(var))[0])

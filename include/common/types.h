@@ -9,6 +9,28 @@ struct alignas(16) __half8
     __host__ __device__ inline __half &operator[](int i) { return val[i]; }
 };
 
+template <typename T>
+struct VecType
+{
+    using Type = void;
+    static const unsigned int vec_len = 0;
+    static_assert(false, "Unsupported dtype");
+};
+
+template <>
+struct VecType<float>
+{
+    using Type = float4;
+    static const unsigned int vec_len = 4;
+};
+
+template <>
+struct VecType<__half>
+{
+    using Type = __half8;
+    static const unsigned int vec_len = 8;
+};
+
 enum DeviceType
 {
     CPU_PINNED,

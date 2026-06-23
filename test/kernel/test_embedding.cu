@@ -39,7 +39,7 @@ TEST(EmbeddingTest, BasicLookup)
     CUDA_CHECK(cudaMemcpy(embed_table.data(), table_h.data(),
                           table_h.size() * sizeof(float), cudaMemcpyHostToDevice));
 
-    EmbeddingLauncher(input_ids, output, embed_table);
+    launch_embedding(input_ids, output, embed_table);
     CUDA_KERNEL_LAUNCH_CHECK();
 
     // Copy result back to host
@@ -79,7 +79,7 @@ TEST(EmbeddingTest, SingleTokenSingleDim)
     CUDA_CHECK(cudaMemcpy(embed_table.data(), table_h.data(),
                           table_h.size() * sizeof(float), cudaMemcpyHostToDevice));
 
-    EmbeddingLauncher(input_ids, output, embed_table);
+    launch_embedding(input_ids, output, embed_table);
     CUDA_KERNEL_LAUNCH_CHECK();
 
     Tensor<float> output_h({token_num, embed_dim}, CPU);
@@ -108,7 +108,7 @@ TEST(EmbeddingTest, RepeatedIndex)
     CUDA_CHECK(cudaMemcpy(embed_table.data(), table_h.data(),
                           table_h.size() * sizeof(float), cudaMemcpyHostToDevice));
 
-    EmbeddingLauncher(input_ids, output, embed_table);
+    launch_embedding(input_ids, output, embed_table);
     CUDA_KERNEL_LAUNCH_CHECK();
 
     Tensor<float> output_h({token_num, embed_dim}, CPU);
@@ -149,7 +149,7 @@ TEST(EmbeddingTest, MultiTokenBatch)
     CUDA_CHECK(cudaMemcpy(embed_table.data(), table_h.data(),
                           table_h.size() * sizeof(float), cudaMemcpyHostToDevice));
 
-    EmbeddingLauncher(input_ids, output, embed_table);
+    launch_embedding(input_ids, output, embed_table);
     CUDA_KERNEL_LAUNCH_CHECK();
 
     Tensor<float> output_h({token_num, embed_dim}, CPU);

@@ -2,7 +2,7 @@
 #include <core/Tensor.cuh>
 
 __global__ void build_padding_index_maps_kernel(const unsigned int num_actual_tokens,
-                                                const unsigned int max_seq_len,
+                                                const int *max_seq_len,
                                                 const int *seq_lens,
                                                 int *unpad_to_padded_idx,
                                                 int *seq_offsets)
@@ -16,23 +16,23 @@ __global__ void build_padding_index_maps_kernel(const unsigned int num_actual_to
         while (accumulate_len + seq_lens[seq_id] <= idx)
             accumulate_len += seq_lens[seq_id++];
         unsigned int idx_in_seq = idx - accumulate_len;
-        unpad_to_padded_idx[idx] = seq_id * max_seq_len + idx_in_seq;
+        unpad_to_padded_idx[idx] = seq_id * max_seq_len[0] + idx_in_seq;
         if (0 == idx_in_seq)
             seq_offsets[seq_id] = accumulate_len;
         idx += stride;
     }
 }
 
-void launch_build_padding_index_maps(const unsigned int num_actual_tokens,
-                                     const unsigned int max_seq_len,
+void launch_build_padding_index_maps(const Tensor<int> &input_ids,
+                                     const Tensor<int> &max_seq_len,
                                      const Tensor<int> &seq_lens,
                                      Tensor<int> &unpad_to_padded_idx,
                                      Tensor<int> &seq_offsets)
 {
     const dim3 nthreads{256 * 512};
     const dim3 threads_per_block{512};
-    CUDA_LAUNCH(build_padding_index_maps_kernel, nthreads, threads_per_block)(num_actual_tokens,
-                                                                              max_seq_len,
+    CUDA_LAUNCH(build_padding_index_maps_kernel, nthreads, threads_per_block)(input_ids.shape()[0],
+                                                                              max_seq_len.data(),
                                                                               seq_lens.data(),
                                                                               unpad_to_padded_idx.data(),
                                                                               seq_offsets.data());

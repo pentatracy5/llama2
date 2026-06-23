@@ -13,7 +13,7 @@ template <typename T>
 struct VecType
 {
     using Type = void;
-    static const unsigned int vec_len = 0;
+    static constexpr unsigned int vec_len = 0;
     static_assert(false, "Unsupported dtype");
 };
 
@@ -21,14 +21,14 @@ template <>
 struct VecType<float>
 {
     using Type = float4;
-    static const unsigned int vec_len = 4;
+    static constexpr unsigned int vec_len = 4;
 };
 
 template <>
 struct VecType<__half>
 {
     using Type = __half8;
-    static const unsigned int vec_len = 8;
+    static constexpr unsigned int vec_len = 8;
 };
 
 enum DeviceType
@@ -52,42 +52,42 @@ enum DataType
 template <typename T>
 struct RealTypeToDataType
 {
-    static const DataType dtype = UNSUPPORTED;
+    static constexpr DataType dtype = UNSUPPORTED;
     static_assert(false, "Unsupported dtype");
 };
 
 template <>
 struct RealTypeToDataType<float>
 {
-    static const DataType dtype = FP32;
+    static constexpr DataType dtype = FP32;
 };
 
 template <>
 struct RealTypeToDataType<half>
 {
-    static const DataType dtype = FP16;
+    static constexpr DataType dtype = FP16;
 };
 
 template <>
 struct RealTypeToDataType<int8_t>
 {
-    static const DataType dtype = INT8;
+    static constexpr DataType dtype = INT8;
 };
 
 template <>
 struct RealTypeToDataType<int32_t>
 {
-    static const DataType dtype = INT32;
+    static constexpr DataType dtype = INT32;
 };
 
 template <>
 struct RealTypeToDataType<bool>
 {
-    static const DataType dtype = BOOL;
+    static constexpr DataType dtype = BOOL;
 };
 
 template <>
 struct RealTypeToDataType<unsigned char>
 {
-    static const DataType dtype = BYTES;
+    static constexpr DataType dtype = BYTES;
 };

@@ -2,6 +2,7 @@
 #include <core/Tensor.cuh>
 #include <common/types.h>
 #include <common/config.h>
+#include <cuda_fp16.h>
 
 template <typename T>
 __global__ void embedding_kernel(const unsigned int num_input_ids,

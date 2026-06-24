@@ -89,5 +89,3 @@ T __shfl_sync(unsigned mask, T var, int srcLane, int width = 32);
             exit(EXIT_FAILURE);                                                  \
         }                                                                        \
     } while (0)
-
-#define FETCH_VEC(TYPE, var) (reinterpret_cast<TYPE*>(&(var))[0])

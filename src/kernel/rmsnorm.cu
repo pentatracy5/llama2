@@ -17,13 +17,18 @@ __global__ void rmsnorm_kernel(const unsigned int num_input_tokens,
     
     extern __shared__ char temp[];
     float *reduce_buf = reinterpret_cast<float *>(temp);
-    T *shared_weights = reinterpret_cast<T *>(reduce_buf + WARPS_PER_BLOCK);
+    VECTYPE *shared_vec_weights = reinterpret_cast<VECTYPE *>(reduce_buf + WARPS_PER_BLOCK);
 
-    unsigned int idx = threadIdx.x * vlen;
-    const unsigned int idx_stride = blockDim.x * vlen;
-    while (idx < embed_dim + 1 - vlen)
+    const VECTYPE *vec_input_tokens = reinterpret_cast<const VECTYPE *>(input_tokens);
+    const VECTYPE *vec_weights = reinterpret_cast<const VECTYPE *>(weights);
+    VECTYPE *vec_output_tokens = reinterpret_cast<VECTYPE *>(output_tokens);
+
+    unsigned int idx = threadIdx.x;
+    const unsigned int idx_stride = blockDim.x;
+    const unsigned int vec_embed_dim = embed_dim / vlen;
+    while (idx < vec_embed_dim)
     {
-        FETCH_VEC(VECTYPE, shared_weights[idx]) = FETCH_VEC(const VECTYPE, weights[idx]);
+        shared_vec_weights[idx] = vec_weights[idx];
         idx += idx_stride;
     }
 
@@ -36,10 +41,10 @@ __global__ void rmsnorm_kernel(const unsigned int num_input_tokens,
     while (token_idx < num_input_tokens)
     {
         x = 0.f;
-        idx = threadIdx.x * vlen;
-        while (idx < embed_dim + 1 - vlen)
+        idx = threadIdx.x;
+        while (idx < vec_embed_dim)
         {
-            const VECTYPE in = FETCH_VEC(const VECTYPE, input_tokens[token_idx * embed_dim + idx]);
+            const VECTYPE in = vec_input_tokens[token_idx * vec_embed_dim + idx];
             const T *in_ptr = reinterpret_cast<const T *>(&in);
 #pragma unroll vlen
             for (unsigned int i = 0; i < vlen; i++)
@@ -59,11 +64,11 @@ __global__ void rmsnorm_kernel(const unsigned int num_input_tokens,
         T inv_var = reduce_buf[0];
         __syncthreads();
 
-        idx = threadIdx.x * vlen;
-        while (idx < embed_dim + 1 - vlen)
+        idx = threadIdx.x;
+        while (idx < vec_embed_dim)
         {
-            const VECTYPE in = FETCH_VEC(const VECTYPE, input_tokens[token_idx * embed_dim + idx]);
-            const VECTYPE weight = FETCH_VEC(const VECTYPE, shared_weights[idx]);
+            const VECTYPE in = vec_input_tokens[token_idx * vec_embed_dim + idx];
+            const VECTYPE weight = shared_vec_weights[idx];
             VECTYPE out;
             const T *in_ptr = reinterpret_cast<const T *>(&in);
             const T *weight_ptr = reinterpret_cast<const T *>(&weight);
@@ -71,7 +76,7 @@ __global__ void rmsnorm_kernel(const unsigned int num_input_tokens,
 #pragma unroll vlen
             for (unsigned int i = 0; i < vlen; i++)
                 out_ptr[i] = in_ptr[i] * weight_ptr[i] * inv_var;
-            FETCH_VEC(VECTYPE, output_tokens[token_idx * embed_dim + idx]) = out;
+            vec_output_tokens[token_idx * vec_embed_dim + idx] = out;
             idx += idx_stride;
         }
 

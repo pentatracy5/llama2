@@ -11,13 +11,20 @@ __global__ void embedding_kernel(const unsigned int num_input_ids,
                                  const T *embed_table,
                                  T *output)
 {
-    unsigned int idx = (blockIdx.x * blockDim.x + threadIdx.x) * VecType<T>::vec_len;
-    unsigned int stride = blockDim.x * gridDim.x * VecType<T>::vec_len;
-    while (idx < num_input_ids * embed_dim + 1 - VecType<T>::vec_len)
+    using VECTYPE = typename VecType<T>::Type;
+    constexpr unsigned int vlen = VecType<T>::vec_len;
+
+    const VECTYPE *vec_embed_table = reinterpret_cast<const VECTYPE *>(embed_table);
+    VECTYPE *vec_output = reinterpret_cast<VECTYPE *>(output);
+
+    unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    const unsigned int stride = blockDim.x * gridDim.x;
+    const unsigned int vec_embed_dim = embed_dim / vlen;
+    const unsigned int total_vec_nums = num_input_ids * vec_embed_dim;
+    while (idx < total_vec_nums)
     {
-        unsigned int token_id = idx / embed_dim;
-        FETCH_VEC(typename VecType<T>::Type, output[idx]) =
-            FETCH_VEC(const typename VecType<T>::Type, embed_table[input_ids[token_id] * embed_dim + (idx - token_id * embed_dim)]);
+        unsigned int token_id = idx / vec_embed_dim;
+        vec_output[idx] = vec_embed_table[input_ids[token_id] * vec_embed_dim + (idx - token_id * vec_embed_dim)];
         idx += stride;
     }
 }

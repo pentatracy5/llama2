@@ -1,5 +1,6 @@
 #include <kernel/build_padding_index_maps.h>
 #include <core/Tensor.cuh>
+#include <common/config.h>
 
 __global__ void build_padding_index_maps_kernel(const unsigned int num_actual_tokens,
                                                 const int *max_seq_len,
@@ -29,8 +30,8 @@ void launch_build_padding_index_maps(const Tensor<int> &input_ids,
                                      Tensor<int> &unpad_to_padded_idx,
                                      Tensor<int> &seq_offsets)
 {
-    const dim3 nthreads{256 * 512};
-    const dim3 threads_per_block{512};
+    const dim3 threads_per_block{THREADS_PER_BLOCK};
+    const dim3 nthreads{NUM_BLOCKS * threads_per_block.x};
     CUDA_LAUNCH(build_padding_index_maps_kernel, nthreads, threads_per_block)(input_ids.shape()[0],
                                                                               max_seq_len.data(),
                                                                               seq_lens.data(),

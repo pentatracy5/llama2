@@ -1,6 +1,7 @@
 #include <kernel/embedding.h>
 #include <core/Tensor.cuh>
 #include <common/types.h>
+#include <common/config.h>
 
 template <typename T>
 __global__ void embedding_kernel(const unsigned int num_input_ids,
@@ -25,8 +26,8 @@ void launch_embedding(const Tensor<int> &input_ids,
                       const Tensor<T> &embed_table,
                       Tensor<T> &output)
 {
-    const dim3 nthreads{256 * 512};
-    const dim3 threads_per_block{512};
+    const dim3 threads_per_block{THREADS_PER_BLOCK};
+    const dim3 nthreads{NUM_BLOCKS * threads_per_block.x};
     CUDA_LAUNCH(embedding_kernel, nthreads, threads_per_block)(input_ids.shape()[0],
                                                                embed_table.shape()[1],
                                                                input_ids.data(),

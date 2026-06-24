@@ -19,51 +19,51 @@ __global__ void rmsnorm_kernel(const unsigned int num_input_tokens,
     float *reduce_buf = reinterpret_cast<float *>(temp);
     T *shared_weights = reinterpret_cast<T *>(reduce_buf + WARPS_PER_BLOCK);
 
-    unsigned int tid = threadIdx.x * vlen;
-    const unsigned int tid_stride = blockDim.x * vlen;
-    while (tid < embed_dim + 1 - vlen)
+    unsigned int idx = threadIdx.x * vlen;
+    const unsigned int idx_stride = blockDim.x * vlen;
+    while (idx < embed_dim + 1 - vlen)
     {
-        FETCH_VEC(VECTYPE, shared_weights[tid]) = FETCH_VEC(const VECTYPE, weights[tid]);
-        tid += tid_stride;
+        FETCH_VEC(VECTYPE, shared_weights[idx]) = FETCH_VEC(const VECTYPE, weights[idx]);
+        idx += idx_stride;
     }
 
     float x;
     unsigned int token_idx = blockIdx.x;
     const unsigned int token_idx_stride = gridDim.x;
+    const unsigned int tid = threadIdx.x;
+    const unsigned int laneid = tid & (WARP_SIZE - 1);
+    const unsigned int warpid = tid >> 5;
     while (token_idx < num_input_tokens)
     {
         x = 0.f;
-        tid = threadIdx.x * vlen;
-        while (tid < embed_dim + 1 - vlen)
+        idx = threadIdx.x * vlen;
+        while (idx < embed_dim + 1 - vlen)
         {
-            const VECTYPE in = FETCH_VEC(const VECTYPE, input_tokens[token_idx * embed_dim + tid]);
+            const VECTYPE in = FETCH_VEC(const VECTYPE, input_tokens[token_idx * embed_dim + idx]);
             const T *in_ptr = reinterpret_cast<const T *>(&in);
 #pragma unroll vlen
             for (unsigned int i = 0; i < vlen; i++)
                 x += float(in_ptr[i] * in_ptr[i]);
-            tid += tid_stride;
+            idx += idx_stride;
         }
 
-        tid = threadIdx.x;
         x = shuffle_warp_reduce<WARP_SIZE, float, AddOp>(x);
-        if (0 == (tid & (WARP_SIZE - 1)))
-            reduce_buf[tid >> 5] = x;
+        if (0 == laneid)
+            reduce_buf[warpid] = x;
         __syncthreads();
-
         if (tid < WARPS_PER_BLOCK)
             x = shuffle_warp_reduce<WARPS_PER_BLOCK, float, AddOp>(reduce_buf[tid]);
-
         if (0 == tid)
             reduce_buf[0] = rsqrtf(x / embed_dim + EPS);
         __syncthreads();
         T inv_var = reduce_buf[0];
         __syncthreads();
 
-        tid = threadIdx.x * vlen;
-        while (tid < embed_dim + 1 - vlen)
+        idx = threadIdx.x * vlen;
+        while (idx < embed_dim + 1 - vlen)
         {
-            const VECTYPE in = FETCH_VEC(const VECTYPE, input_tokens[token_idx * embed_dim + tid]);
-            const VECTYPE weight = FETCH_VEC(const VECTYPE, shared_weights[tid]);
+            const VECTYPE in = FETCH_VEC(const VECTYPE, input_tokens[token_idx * embed_dim + idx]);
+            const VECTYPE weight = FETCH_VEC(const VECTYPE, shared_weights[idx]);
             VECTYPE out;
             const T *in_ptr = reinterpret_cast<const T *>(&in);
             const T *weight_ptr = reinterpret_cast<const T *>(&weight);
@@ -71,8 +71,8 @@ __global__ void rmsnorm_kernel(const unsigned int num_input_tokens,
 #pragma unroll vlen
             for (unsigned int i = 0; i < vlen; i++)
                 out_ptr[i] = in_ptr[i] * weight_ptr[i] * inv_var;
-            FETCH_VEC(VECTYPE, output_tokens[token_idx * embed_dim + tid]) = out;
-            tid += tid_stride;
+            FETCH_VEC(VECTYPE, output_tokens[token_idx * embed_dim + idx]) = out;
+            idx += idx_stride;
         }
 
         token_idx += token_idx_stride;

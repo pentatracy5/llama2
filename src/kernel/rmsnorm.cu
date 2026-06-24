@@ -14,6 +14,7 @@ __global__ void rmsnorm_kernel(const unsigned int num_input_tokens,
 {
     using VECTYPE = typename VecType<T>::Type;
     constexpr unsigned int vlen = VecType<T>::vec_len;
+    
     extern __shared__ char temp[];
     float *reduce_buf = reinterpret_cast<float *>(temp);
     T *shared_weights = reinterpret_cast<T *>(reduce_buf + WARPS_PER_BLOCK);
@@ -84,7 +85,7 @@ void launch_rmsnorm(const Tensor<T> &input_tokens,
                     Tensor<T> &output_tokens)
 {
     const dim3 threads_per_block{THREADS_PER_BLOCK};
-    const dim3 nthreads{NUM_BLOCKS * threads_per_block.x};
+    const dim3 nthreads{std::min(NUM_BLOCKS, input_tokens.shape()[0]) * threads_per_block.x};
     unsigned int shared_mem_bytes = WARPS_PER_BLOCK * sizeof(float) + input_tokens.shape()[1] * sizeof(T);
     CUDA_LAUNCH_SHAREDMEM(rmsnorm_kernel, nthreads, threads_per_block, shared_mem_bytes)(input_tokens.shape()[0],
                                                                                          input_tokens.shape()[1],

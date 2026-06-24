@@ -31,7 +31,7 @@ void launch_build_padding_index_maps(const Tensor<int> &input_ids,
                                      Tensor<int> &seq_offsets)
 {
     const dim3 threads_per_block{THREADS_PER_BLOCK};
-    const dim3 nthreads{NUM_BLOCKS * threads_per_block.x};
+    const dim3 nthreads{std::min(NUM_BLOCKS * threads_per_block.x, input_ids.shape()[0])};
     CUDA_LAUNCH(build_padding_index_maps_kernel, nthreads, threads_per_block)(input_ids.shape()[0],
                                                                               max_seq_len.data(),
                                                                               seq_lens.data(),

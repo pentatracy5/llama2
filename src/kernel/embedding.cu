@@ -7,7 +7,7 @@
 template <typename T>
 __global__ void embedding_kernel(const unsigned int num_input_ids,
                                  const unsigned int embed_dim,
-                                 const int *input_ids,
+                                 const unsigned int *input_ids,
                                  const T *embed_table,
                                  T *output)
 {
@@ -30,7 +30,7 @@ __global__ void embedding_kernel(const unsigned int num_input_ids,
 }
 
 template <typename T>
-void launch_embedding(const Tensor<int> &input_ids,
+void launch_embedding(const Tensor<unsigned int> &input_ids,
                       const Tensor<T> &embed_table,
                       Tensor<T> &output)
 {
@@ -44,5 +44,5 @@ void launch_embedding(const Tensor<int> &input_ids,
     CUDA_KERNEL_LAUNCH_CHECK();
 }
 
-template void launch_embedding<float>(const Tensor<int> &, const Tensor<float> &, Tensor<float> &);
-template void launch_embedding<__half>(const Tensor<int> &, const Tensor<__half> &, Tensor<__half> &);
+template void launch_embedding<float>(const Tensor<unsigned int> &, const Tensor<float> &, Tensor<float> &);
+template void launch_embedding<__half>(const Tensor<unsigned int> &, const Tensor<__half> &, Tensor<__half> &);

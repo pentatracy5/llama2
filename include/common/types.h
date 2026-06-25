@@ -45,6 +45,7 @@ enum DataType
     FP16,
     INT8,
     INT32,
+    UINT32,
     BOOL,
     BYTES
 };
@@ -78,6 +79,12 @@ template <>
 struct RealTypeToDataType<int32_t>
 {
     static constexpr DataType dtype = INT32;
+};
+
+template <>
+struct RealTypeToDataType<uint32_t>
+{
+    static constexpr DataType dtype = UINT32;
 };
 
 template <>

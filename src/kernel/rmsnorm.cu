@@ -100,11 +100,9 @@ void launch_rmsnorm(const Tensor<T> &input_tokens,
     CUDA_KERNEL_LAUNCH_CHECK();
 }
 
-template <>
-void launch_rmsnorm<float>(const Tensor<float> &input_tokens,
-                           const Tensor<float> &weights,
-                           Tensor<float> &output_tokens);
-template <>
-void launch_rmsnorm<half>(const Tensor<half> &input_tokens,
-                          const Tensor<half> &weights,
-                          Tensor<half> &output_tokens);
+template void launch_rmsnorm<float>(const Tensor<float> &input_tokens,
+                                    const Tensor<float> &weights,
+                                    Tensor<float> &output_tokens);
+template void launch_rmsnorm<half>(const Tensor<half> &input_tokens,
+                                   const Tensor<half> &weights,
+                                   Tensor<half> &output_tokens);

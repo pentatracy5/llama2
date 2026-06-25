@@ -44,5 +44,11 @@ void launch_embedding(const Tensor<unsigned int> &input_ids,
     CUDA_KERNEL_LAUNCH_CHECK();
 }
 
-template void launch_embedding<float>(const Tensor<unsigned int> &, const Tensor<float> &, Tensor<float> &);
-template void launch_embedding<__half>(const Tensor<unsigned int> &, const Tensor<__half> &, Tensor<__half> &);
+template <>
+void launch_embedding<float>(const Tensor<unsigned int> &input_ids,
+                             const Tensor<float> &embed_table,
+                             Tensor<float> &output);
+template <>
+void launch_embedding<half>(const Tensor<unsigned int> &input_ids,
+                            const Tensor<half> &embed_table,
+                            Tensor<half> &output);

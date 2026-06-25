@@ -50,7 +50,7 @@ float scalar_from_float<float>(float x)
 }
 
 template <>
-__half scalar_from_float<__half>(float x)
+half scalar_from_float<half>(float x)
 {
     return __float2half(x);
 }
@@ -65,7 +65,7 @@ float scalar_to_float<float>(float x)
 }
 
 template <>
-float scalar_to_float<__half>(__half x)
+float scalar_to_float<half>(half x)
 {
     return __half2float(x);
 }
@@ -101,7 +101,7 @@ static void run_rmsnorm_test(const std::vector<float> &input_h,
     ASSERT_EQ(input_h.size(), num_tokens * embed_dim);
     ASSERT_EQ(weight_h.size(), embed_dim);
 
-    const std::vector<T> input_d_h  = vector_from_float<T>(input_h);
+    const std::vector<T> input_d_h = vector_from_float<T>(input_h);
     const std::vector<T> weight_d_h = vector_from_float<T>(weight_h);
 
     Tensor<T> input_d({num_tokens, embed_dim}, GPU);
@@ -138,9 +138,9 @@ static void run_rmsnorm_test(const std::vector<float> &input_h,
 TEST(RMSNormTest, SingleTokenUnitWeights)
 {
     const unsigned int num_tokens = 1;
-    const unsigned int embed_dim  = 8;
+    const unsigned int embed_dim = 8;
 
-    const std::vector<float> input_h  = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f};
+    const std::vector<float> input_h = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f};
     const std::vector<float> weight_h(embed_dim, 1.0f);
 
     run_rmsnorm_test<float>(input_h, weight_h, num_tokens, embed_dim, 1e-4f);
@@ -149,7 +149,7 @@ TEST(RMSNormTest, SingleTokenUnitWeights)
 TEST(RMSNormTest, MultipleTokensWithWeights)
 {
     const unsigned int num_tokens = 3;
-    const unsigned int embed_dim  = 16;
+    const unsigned int embed_dim = 16;
 
     const std::vector<float> input_h = {
         0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f,
@@ -172,7 +172,7 @@ TEST(RMSNormTest, MultipleTokensWithWeights)
 TEST(RMSNormTest, ConstantInputAndWeights)
 {
     const unsigned int num_tokens = 5;
-    const unsigned int embed_dim  = 32;
+    const unsigned int embed_dim = 32;
 
     const std::vector<float> input_h(num_tokens * embed_dim, 2.0f);
     const std::vector<float> weight_h(embed_dim, 0.5f);
@@ -183,7 +183,7 @@ TEST(RMSNormTest, ConstantInputAndWeights)
 TEST(RMSNormTest, SmallDimMultipleOfVecLen)
 {
     const unsigned int num_tokens = 4;
-    const unsigned int embed_dim  = 4;
+    const unsigned int embed_dim = 4;
 
     const std::vector<float> input_h = {
         1.0f, 0.0f, -1.0f, 2.0f,
@@ -198,8 +198,8 @@ TEST(RMSNormTest, SmallDimMultipleOfVecLen)
 TEST(RMSNormTest, LargeBatchRandomValues)
 {
     const unsigned int num_tokens = 64;
-    const unsigned int embed_dim  = 64;
-    const unsigned int numel      = num_tokens * embed_dim;
+    const unsigned int embed_dim = 64;
+    const unsigned int numel = num_tokens * embed_dim;
 
     std::mt19937 gen(42);
     std::uniform_real_distribution<float> input_dist(-2.0f, 2.0f);
@@ -221,18 +221,18 @@ TEST(RMSNormTest, LargeBatchRandomValues)
 TEST(RMSNormHalfTest, SingleTokenUnitWeights)
 {
     const unsigned int num_tokens = 1;
-    const unsigned int embed_dim  = 8;
+    const unsigned int embed_dim = 8;
 
-    const std::vector<float> input_h  = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f};
+    const std::vector<float> input_h = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f};
     const std::vector<float> weight_h(embed_dim, 1.0f);
 
-    run_rmsnorm_test<__half>(input_h, weight_h, num_tokens, embed_dim, 1e-3f);
+    run_rmsnorm_test<half>(input_h, weight_h, num_tokens, embed_dim, 1e-3f);
 }
 
 TEST(RMSNormHalfTest, MultipleTokensWithWeights)
 {
     const unsigned int num_tokens = 3;
-    const unsigned int embed_dim  = 16;
+    const unsigned int embed_dim = 16;
 
     const std::vector<float> input_h = {
         0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f,
@@ -249,25 +249,25 @@ TEST(RMSNormHalfTest, MultipleTokensWithWeights)
     for (unsigned int d = 0; d < embed_dim; ++d)
         weight_h.push_back(static_cast<float>(d + 1));
 
-    run_rmsnorm_test<__half>(input_h, weight_h, num_tokens, embed_dim, 2e-2f);
+    run_rmsnorm_test<half>(input_h, weight_h, num_tokens, embed_dim, 2e-2f);
 }
 
 TEST(RMSNormHalfTest, ConstantInputAndWeights)
 {
     const unsigned int num_tokens = 5;
-    const unsigned int embed_dim  = 32;
+    const unsigned int embed_dim = 32;
 
     const std::vector<float> input_h(num_tokens * embed_dim, 2.0f);
     const std::vector<float> weight_h(embed_dim, 0.5f);
 
-    run_rmsnorm_test<__half>(input_h, weight_h, num_tokens, embed_dim, 1e-3f);
+    run_rmsnorm_test<half>(input_h, weight_h, num_tokens, embed_dim, 1e-3f);
 }
 
 TEST(RMSNormHalfTest, LargeBatchRandomValues)
 {
     const unsigned int num_tokens = 64;
-    const unsigned int embed_dim  = 64;
-    const unsigned int numel      = num_tokens * embed_dim;
+    const unsigned int embed_dim = 64;
+    const unsigned int numel = num_tokens * embed_dim;
 
     std::mt19937 gen(42);
     std::uniform_real_distribution<float> input_dist(-2.0f, 2.0f);
@@ -280,5 +280,5 @@ TEST(RMSNormHalfTest, LargeBatchRandomValues)
     for (unsigned int d = 0; d < embed_dim; ++d)
         weight_h[d] = weight_dist(gen);
 
-    run_rmsnorm_test<__half>(input_h, weight_h, num_tokens, embed_dim, 1e-2f);
+    run_rmsnorm_test<half>(input_h, weight_h, num_tokens, embed_dim, 1e-2f);
 }

@@ -14,7 +14,7 @@ __global__ void rmsnorm_kernel(const unsigned int num_input_tokens,
 {
     using VECTYPE = typename VecType<T>::Type;
     constexpr unsigned int vlen = VecType<T>::vec_len;
-    
+
     extern __shared__ char temp[];
     float *reduce_buf = reinterpret_cast<float *>(temp);
     VECTYPE *shared_vec_weights = reinterpret_cast<VECTYPE *>(reduce_buf + WARPS_PER_BLOCK);
@@ -100,5 +100,11 @@ void launch_rmsnorm(const Tensor<T> &input_tokens,
     CUDA_KERNEL_LAUNCH_CHECK();
 }
 
-template void launch_rmsnorm<float>(const Tensor<float> &, const Tensor<float> &, Tensor<float> &);
-template void launch_rmsnorm<__half>(const Tensor<__half> &, const Tensor<__half> &, Tensor<__half> &);
+template <>
+void launch_rmsnorm<float>(const Tensor<float> &input_tokens,
+                           const Tensor<float> &weights,
+                           Tensor<float> &output_tokens);
+template <>
+void launch_rmsnorm<half>(const Tensor<half> &input_tokens,
+                          const Tensor<half> &weights,
+                          Tensor<half> &output_tokens);

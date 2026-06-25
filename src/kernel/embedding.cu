@@ -35,7 +35,7 @@ void launch_embedding(const Tensor<unsigned int> &input_ids,
                       Tensor<T> &output)
 {
     const dim3 threads_per_block{THREADS_PER_BLOCK};
-    const dim3 nthreads{std::min(NUM_BLOCKS * threads_per_block.x, input_ids.shape()[0] * embed_table.shape()[1]) / VecType<T>::vec_len};
+    const dim3 nthreads{std::min(NUM_BLOCKS_X * threads_per_block.x, input_ids.shape()[0] * embed_table.shape()[1]) / VecType<T>::vec_len};
     CUDA_LAUNCH(embedding_kernel, nthreads, threads_per_block)(input_ids.shape()[0],
                                                                embed_table.shape()[1],
                                                                input_ids.data(),

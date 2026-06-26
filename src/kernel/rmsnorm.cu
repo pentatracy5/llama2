@@ -91,7 +91,7 @@ void launch_rmsnorm(const Tensor<T> &input_tokens,
 {
     const dim3 threads_per_block{THREADS_PER_BLOCK};
     const dim3 nthreads{std::min(NUM_BLOCKS_X, input_tokens.shape()[0]) * threads_per_block.x};
-    unsigned int shared_mem_bytes = WARPS_PER_BLOCK * sizeof(float) + input_tokens.shape()[1] * sizeof(T);
+    const unsigned int shared_mem_bytes = WARPS_PER_BLOCK * sizeof(float) + input_tokens.shape()[1] * sizeof(T);
     CUDA_LAUNCH_SHAREDMEM(rmsnorm_kernel, nthreads, threads_per_block, shared_mem_bytes)(input_tokens.shape()[0],
                                                                                          input_tokens.shape()[1],
                                                                                          input_tokens.data(),

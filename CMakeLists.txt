@@ -11,6 +11,12 @@ find_package(CUDAToolkit REQUIRED)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# MSVC: cpp源文件按照 /utf-8 编码
+if(MSVC)
+    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:/utf-8>)
+    add_compile_options($<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/utf-8>)
+endif()
+
 # 自动探测 当前机器的 GPU 并生成对应代码
 set(CMAKE_CUDA_ARCHITECTURES "native")
 

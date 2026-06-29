@@ -14,7 +14,7 @@ struct VecType
 {
     using Type = void;
     static constexpr unsigned int vec_len = 0;
-    static_assert(false, "Unsupported dtype");
+    static_assert(false, "Unsupported vectype");
 };
 
 template <>

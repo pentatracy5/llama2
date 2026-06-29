@@ -78,9 +78,9 @@ public:
         return size_;
     }
 
-    int ndim() const noexcept
+    unsigned int ndim() const noexcept
     {
-        return static_cast<int>(shape_.size());
+        return static_cast<unsigned int>(shape_.size());
     }
 
     const std::vector<unsigned int> &shape() const noexcept
@@ -102,7 +102,7 @@ public:
     {
         std::vector<unsigned int> s(ndim());
         unsigned int stride = 1;
-        for (int i = ndim() - 1; i >= 0; --i)
+        for (int i = static_cast<int>(ndim()) - 1; i >= 0; --i)
         {
             s[i] = stride;
             stride *= shape_[i];

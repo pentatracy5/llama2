@@ -11,5 +11,5 @@ set_target_properties(kernel PROPERTIES
     POSITION_INDEPENDENT_CODE ON
 )
 
-# 链接 CUDA 运行时
-target_link_libraries(kernel PUBLIC CUDA::cudart)
+# 链接 CUDA 运行时和 cuBLAS
+target_link_libraries(kernel PUBLIC CUDA::cudart CUDA::cublas)

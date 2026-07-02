@@ -146,10 +146,15 @@ static void run_linear_test(const std::vector<float> &A_h,
     CUDA_CHECK(cudaMemcpy(B_d.data(), B_d_h.data(),
                           B_d_h.size() * sizeof(T), cudaMemcpyHostToDevice));
 
+    const unsigned int dim = static_cast<unsigned int>(A_shape.size());
+    const unsigned int M = C_shape[dim - 2];
+    const unsigned int N = C_shape[dim - 1];
+    const unsigned int K = trans_A ? A_shape[dim - 2] : A_shape[dim - 1];
+
     cublasHandle_t handle;
     CUBLAS_CHECK(cublasCreate(&handle));
 
-    launch_linear<T>(handle, trans_A, trans_B, A_d, B_d, C_d);
+    launch_linear<T>(handle, trans_A, trans_B, M, N, K, A_d, B_d, C_d);
 
     CUBLAS_CHECK(cublasDestroy(handle));
 
@@ -162,6 +167,102 @@ static void run_linear_test(const std::vector<float> &A_h,
     {
         ASSERT_NEAR(C_h[idx], expected_h[idx], tolerance)
             << "idx=" << idx;
+    }
+}
+
+// ------------------------------------------------------------------
+// Helper: run a submatrix GEMM where the tensor shapes are larger than
+// the actual M, N, K used in the cublas call.
+// ------------------------------------------------------------------
+template <typename T>
+static void run_linear_submatrix_test(const std::vector<float> &A_h,
+                                      const std::vector<float> &B_h,
+                                      const std::vector<unsigned int> &A_shape,
+                                      const std::vector<unsigned int> &B_shape,
+                                      const std::vector<unsigned int> &C_shape,
+                                      const unsigned int M,
+                                      const unsigned int N,
+                                      const unsigned int K,
+                                      const bool trans_A,
+                                      const bool trans_B,
+                                      const float tolerance)
+{
+    const unsigned int dim = static_cast<unsigned int>(A_shape.size());
+    const unsigned int A_rows = A_shape[dim - 2];
+    const unsigned int A_cols = A_shape[dim - 1];
+    const unsigned int B_rows = B_shape[dim - 2];
+    const unsigned int B_cols = B_shape[dim - 1];
+    const unsigned int C_rows = C_shape[dim - 2];
+    const unsigned int C_cols = C_shape[dim - 1];
+
+    unsigned int batch = 1;
+    for (unsigned int i = 0; i + 2 < dim; ++i)
+        batch *= C_shape[i];
+
+    std::vector<float> expected_h(batch * M * N);
+
+    for (unsigned int b = 0; b < batch; ++b)
+    {
+        const size_t a_batch_offset = static_cast<size_t>(b) * A_rows * A_cols;
+        const size_t b_batch_offset = static_cast<size_t>(b) * B_rows * B_cols;
+        const size_t expected_batch_offset = static_cast<size_t>(b) * M * N;
+
+        for (unsigned int i = 0; i < M; ++i)
+        {
+            for (unsigned int j = 0; j < N; ++j)
+            {
+                float sum = 0.0f;
+                for (unsigned int k = 0; k < K; ++k)
+                {
+                    const float a_val = trans_A ? A_h[a_batch_offset + k * A_cols + i]
+                                                : A_h[a_batch_offset + i * A_cols + k];
+                    const float b_val = trans_B ? B_h[b_batch_offset + j * B_cols + k]
+                                                : B_h[b_batch_offset + k * B_cols + j];
+                    sum += a_val * b_val;
+                }
+                expected_h[expected_batch_offset + i * N + j] = sum;
+            }
+        }
+    }
+
+    Tensor<T> A_d(A_shape, GPU);
+    Tensor<T> B_d(B_shape, GPU);
+    Tensor<T> C_d(C_shape, GPU);
+
+    const std::vector<T> A_d_h = vector_from_float<T>(A_h);
+    const std::vector<T> B_d_h = vector_from_float<T>(B_h);
+
+    CUDA_CHECK(cudaMemcpy(A_d.data(), A_d_h.data(),
+                          A_d_h.size() * sizeof(T), cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(B_d.data(), B_d_h.data(),
+                          B_d_h.size() * sizeof(T), cudaMemcpyHostToDevice));
+
+    cublasHandle_t handle;
+    CUBLAS_CHECK(cublasCreate(&handle));
+
+    launch_linear<T>(handle, trans_A, trans_B, M, N, K, A_d, B_d, C_d);
+
+    CUBLAS_CHECK(cublasDestroy(handle));
+
+    std::vector<T> C_d_h(C_d.numel());
+    CUDA_CHECK(cudaMemcpy(C_d_h.data(), C_d.data(),
+                          C_d_h.size() * sizeof(T), cudaMemcpyDeviceToHost));
+    const std::vector<float> C_h = vector_to_float(C_d_h);
+
+    for (unsigned int b = 0; b < batch; ++b)
+    {
+        const size_t expected_batch_offset = static_cast<size_t>(b) * M * N;
+        const size_t c_batch_offset = static_cast<size_t>(b) * C_rows * C_cols;
+        for (unsigned int i = 0; i < M; ++i)
+        {
+            for (unsigned int j = 0; j < N; ++j)
+            {
+                const unsigned int expected_idx = expected_batch_offset + i * N + j;
+                const unsigned int c_idx = c_batch_offset + i * C_cols + j;
+                ASSERT_NEAR(C_h[c_idx], expected_h[expected_idx], tolerance)
+                    << "batch=" << b << " i=" << i << " j=" << j;
+            }
+        }
     }
 }
 
@@ -283,6 +384,29 @@ TEST(LinearTest, LargeRandom2D)
                            false, false, 1e-3f);
 }
 
+TEST(LinearTest, SubMatrixTransposeB2D)
+{
+    // A is [4, 5], B is stored as [6, 5] (trans_B=true => B^T is [5, 6])
+    // We only compute a [2, 4] x [4, 3] -> [2, 3] submatrix.
+    const std::vector<float> A_h = {
+        1.0f, 2.0f, 3.0f, 4.0f, 5.0f,
+        6.0f, 7.0f, 8.0f, 9.0f, 10.0f,
+        11.0f, 12.0f, 13.0f, 14.0f, 15.0f,
+        16.0f, 17.0f, 18.0f, 19.0f, 20.0f};
+    const std::vector<float> B_h = {
+        1.0f, 6.0f, 11.0f, 16.0f, 21.0f,
+        2.0f, 7.0f, 12.0f, 17.0f, 22.0f,
+        3.0f, 8.0f, 13.0f, 18.0f, 23.0f,
+        4.0f, 9.0f, 14.0f, 19.0f, 24.0f,
+        5.0f, 10.0f, 15.0f, 20.0f, 25.0f,
+        26.0f, 27.0f, 28.0f, 29.0f, 30.0f};
+
+    run_linear_submatrix_test<float>(A_h, B_h,
+                                     {4, 5}, {6, 5}, {4, 6},
+                                     2, 3, 4,
+                                     false, true, 1e-4f);
+}
+
 // ------------------------------------------------------------------
 // Linear kernel tests (FP16)
 // ------------------------------------------------------------------
@@ -374,4 +498,25 @@ TEST(LinearHalfTest, LargeRandom2D)
     run_linear_test<half>(A_h, B_h,
                           {M, K}, {K, N}, {M, N},
                           false, false, 2e-2f);
+}
+
+TEST(LinearHalfTest, SubMatrixTransposeB2D)
+{
+    const std::vector<float> A_h = {
+        1.0f, 2.0f, 3.0f, 4.0f, 5.0f,
+        6.0f, 7.0f, 8.0f, 9.0f, 10.0f,
+        11.0f, 12.0f, 13.0f, 14.0f, 15.0f,
+        16.0f, 17.0f, 18.0f, 19.0f, 20.0f};
+    const std::vector<float> B_h = {
+        1.0f, 6.0f, 11.0f, 16.0f, 21.0f,
+        2.0f, 7.0f, 12.0f, 17.0f, 22.0f,
+        3.0f, 8.0f, 13.0f, 18.0f, 23.0f,
+        4.0f, 9.0f, 14.0f, 19.0f, 24.0f,
+        5.0f, 10.0f, 15.0f, 20.0f, 25.0f,
+        26.0f, 27.0f, 28.0f, 29.0f, 30.0f};
+
+    run_linear_submatrix_test<half>(A_h, B_h,
+                                    {4, 5}, {6, 5}, {4, 6},
+                                    2, 3, 4,
+                                    false, true, 2e-2f);
 }

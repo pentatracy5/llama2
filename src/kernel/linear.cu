@@ -42,6 +42,9 @@ template <typename T>
 void launch_linear(cublasHandle_t &cublas_handle,
                    const bool trans_A,
                    const bool trans_B,
+                   const unsigned int M,
+                   const unsigned int N,
+                   const unsigned int K,
                    const Tensor<T> &A,
                    const Tensor<T> &B,
                    Tensor<T> &C)
@@ -64,15 +67,22 @@ void launch_linear(cublasHandle_t &cublas_handle,
     const int ldb = A.shape()[dim - 1];
     const int ldc = C.shape()[dim - 1];
 
+    const int m = N;
+    const int n = M;
+    const int k = K;
+
     const int Am = trans_B ? B.shape()[dim - 2] : B.shape()[dim - 1];
     const int Ak = trans_B ? B.shape()[dim - 1] : B.shape()[dim - 2];
     const int Bk = trans_A ? A.shape()[dim - 2] : A.shape()[dim - 1];
     const int Bn = trans_A ? A.shape()[dim - 1] : A.shape()[dim - 2];
     const int Cm = C.shape()[dim - 1];
     const int Cn = C.shape()[dim - 2];
-    assert(Am == Cm && "N of Matrix B C do not match");
-    assert(Bn == Cn && "M of Matrix A C do not match");
-    assert(Ak == Bk && "K of Matrix A B do not match");
+    assert(Am >= m && "M dim of Matrix B is illegal");
+    assert(Ak >= k && "K dim of Matrix B is illegal");
+    assert(Bk >= k && "K dim of Matrix A is illegal");
+    assert(Bn >= n && "N dim of Matrix A is illegal");
+    assert(Cm >= m && "M dim of Matrix C is illegal");
+    assert(Cn >= n && "N dim of Matrix C is illegal");
 
     const long long int stride_A = static_cast<long long int>(Am * Ak);
     const long long int stride_B = static_cast<long long int>(Bk * Bn);
@@ -90,9 +100,9 @@ void launch_linear(cublasHandle_t &cublas_handle,
     CUBLAS_CHECK(cublasGemmStridedBatchedEx(cublas_handle,
                                             op_A,
                                             op_B,
-                                            Am,
-                                            Cn,
-                                            Bk,
+                                            m,
+                                            n,
+                                            k,
                                             pAlpha,
                                             pA,
                                             A_type,
@@ -115,6 +125,9 @@ void launch_linear(cublasHandle_t &cublas_handle,
 template void launch_linear<float>(cublasHandle_t &cublas_handle,
                                    const bool trans_A,
                                    const bool trans_B,
+                                   const unsigned int M,
+                                   const unsigned int N,
+                                   const unsigned int K,
                                    const Tensor<float> &A,
                                    const Tensor<float> &B,
                                    Tensor<float> &C);
@@ -122,6 +135,9 @@ template void launch_linear<float>(cublasHandle_t &cublas_handle,
 template void launch_linear<half>(cublasHandle_t &cublas_handle,
                                   const bool trans_A,
                                   const bool trans_B,
+                                  const unsigned int M,
+                                  const unsigned int N,
+                                  const unsigned int K,
                                   const Tensor<half> &A,
                                   const Tensor<half> &B,
                                   Tensor<half> &C);

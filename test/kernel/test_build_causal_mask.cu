@@ -14,20 +14,23 @@ static void compute_expected_causal_mask(const std::vector<unsigned int> &q_lens
                                          const std::vector<unsigned int> &kv_lens,
                                          unsigned int max_q_len,
                                          unsigned int max_kv_len,
+                                         unsigned int q_cache_len,
+                                         unsigned int kv_cache_len,
                                          std::vector<unsigned char> &mask)
 {
     const unsigned int batch_size = static_cast<unsigned int>(q_lens.size());
-    mask.resize(batch_size * max_q_len * max_kv_len);
+    mask.resize(batch_size * q_cache_len * kv_cache_len);
+    std::fill(mask.begin(), mask.end(), static_cast<unsigned char>(0));
 
     for (unsigned int seq_id = 0; seq_id < batch_size; ++seq_id)
     {
         const unsigned int q_len = q_lens[seq_id];
         const unsigned int kv_len = kv_lens[seq_id];
-        const unsigned int seq_offset = seq_id * max_q_len * max_kv_len;
+        const unsigned int seq_offset = seq_id * q_cache_len * kv_cache_len;
 
         for (unsigned int q_id = 0; q_id < max_q_len; ++q_id)
         {
-            const unsigned int q_offset = q_id * max_kv_len + seq_offset;
+            const unsigned int q_offset = q_id * kv_cache_len + seq_offset;
             for (unsigned int kv_id = 0; kv_id < max_kv_len; ++kv_id)
             {
                 const unsigned int kv_offset = q_offset + kv_id;
@@ -58,12 +61,9 @@ TEST(BuildCausalMaskTest, BasicTwoSequences)
     CUDA_CHECK(cudaMemcpy(kv_lens_d.data(), kv_lens.data(),
                           batch_size * sizeof(unsigned int), cudaMemcpyHostToDevice));
 
-    Tensor<unsigned int> max_seq_len_h({1}, CPU);
-    max_seq_len_h.data()[0] = max_q_len;
-
     Tensor<unsigned char> mask_d({batch_size, max_q_len, max_kv_len}, GPU);
 
-    launch_build_causal_mask(max_seq_len_h, q_lens_d, kv_lens_d, mask_d);
+    launch_build_causal_mask(max_q_len, max_kv_len, q_lens_d, kv_lens_d, mask_d);
     CUDA_KERNEL_LAUNCH_CHECK();
 
     Tensor<unsigned char> mask_h({batch_size, max_q_len, max_kv_len}, CPU);
@@ -71,7 +71,7 @@ TEST(BuildCausalMaskTest, BasicTwoSequences)
                           mask_d.numel() * sizeof(unsigned char), cudaMemcpyDeviceToHost));
 
     std::vector<unsigned char> expected;
-    compute_expected_causal_mask(q_lens, kv_lens, max_q_len, max_kv_len, expected);
+    compute_expected_causal_mask(q_lens, kv_lens, max_q_len, max_kv_len, max_q_len, max_kv_len, expected);
 
     for (unsigned int i = 0; i < mask_d.numel(); ++i)
     {
@@ -94,12 +94,9 @@ TEST(BuildCausalMaskTest, EqualQueryAndKVLengths)
     CUDA_CHECK(cudaMemcpy(kv_lens_d.data(), kv_lens.data(),
                           batch_size * sizeof(unsigned int), cudaMemcpyHostToDevice));
 
-    Tensor<unsigned int> max_seq_len_h({1}, CPU);
-    max_seq_len_h.data()[0] = max_q_len;
-
     Tensor<unsigned char> mask_d({batch_size, max_q_len, max_kv_len}, GPU);
 
-    launch_build_causal_mask(max_seq_len_h, q_lens_d, kv_lens_d, mask_d);
+    launch_build_causal_mask(max_q_len, max_kv_len, q_lens_d, kv_lens_d, mask_d);
     CUDA_KERNEL_LAUNCH_CHECK();
 
     Tensor<unsigned char> mask_h({batch_size, max_q_len, max_kv_len}, CPU);
@@ -107,7 +104,7 @@ TEST(BuildCausalMaskTest, EqualQueryAndKVLengths)
                           mask_d.numel() * sizeof(unsigned char), cudaMemcpyDeviceToHost));
 
     std::vector<unsigned char> expected;
-    compute_expected_causal_mask(q_lens, kv_lens, max_q_len, max_kv_len, expected);
+    compute_expected_causal_mask(q_lens, kv_lens, max_q_len, max_kv_len, max_q_len, max_kv_len, expected);
 
     for (unsigned int i = 0; i < mask_d.numel(); ++i)
     {
@@ -130,12 +127,9 @@ TEST(BuildCausalMaskTest, SingleToken)
     CUDA_CHECK(cudaMemcpy(kv_lens_d.data(), kv_lens.data(),
                           batch_size * sizeof(unsigned int), cudaMemcpyHostToDevice));
 
-    Tensor<unsigned int> max_seq_len_h({1}, CPU);
-    max_seq_len_h.data()[0] = max_q_len;
-
     Tensor<unsigned char> mask_d({batch_size, max_q_len, max_kv_len}, GPU);
 
-    launch_build_causal_mask(max_seq_len_h, q_lens_d, kv_lens_d, mask_d);
+    launch_build_causal_mask(max_q_len, max_kv_len, q_lens_d, kv_lens_d, mask_d);
     CUDA_KERNEL_LAUNCH_CHECK();
 
     Tensor<unsigned char> mask_h({batch_size, max_q_len, max_kv_len}, CPU);
@@ -143,7 +137,7 @@ TEST(BuildCausalMaskTest, SingleToken)
                           mask_d.numel() * sizeof(unsigned char), cudaMemcpyDeviceToHost));
 
     std::vector<unsigned char> expected;
-    compute_expected_causal_mask(q_lens, kv_lens, max_q_len, max_kv_len, expected);
+    compute_expected_causal_mask(q_lens, kv_lens, max_q_len, max_kv_len, max_q_len, max_kv_len, expected);
 
     for (unsigned int i = 0; i < mask_d.numel(); ++i)
     {
@@ -167,12 +161,9 @@ TEST(BuildCausalMaskTest, IncrementalDecoding)
     CUDA_CHECK(cudaMemcpy(kv_lens_d.data(), kv_lens.data(),
                           batch_size * sizeof(unsigned int), cudaMemcpyHostToDevice));
 
-    Tensor<unsigned int> max_seq_len_h({1}, CPU);
-    max_seq_len_h.data()[0] = max_q_len;
-
     Tensor<unsigned char> mask_d({batch_size, max_q_len, max_kv_len}, GPU);
 
-    launch_build_causal_mask(max_seq_len_h, q_lens_d, kv_lens_d, mask_d);
+    launch_build_causal_mask(max_q_len, max_kv_len, q_lens_d, kv_lens_d, mask_d);
     CUDA_KERNEL_LAUNCH_CHECK();
 
     Tensor<unsigned char> mask_h({batch_size, max_q_len, max_kv_len}, CPU);
@@ -180,7 +171,7 @@ TEST(BuildCausalMaskTest, IncrementalDecoding)
                           mask_d.numel() * sizeof(unsigned char), cudaMemcpyDeviceToHost));
 
     std::vector<unsigned char> expected;
-    compute_expected_causal_mask(q_lens, kv_lens, max_q_len, max_kv_len, expected);
+    compute_expected_causal_mask(q_lens, kv_lens, max_q_len, max_kv_len, max_q_len, max_kv_len, expected);
 
     for (unsigned int i = 0; i < mask_d.numel(); ++i)
     {
@@ -209,12 +200,9 @@ TEST(BuildCausalMaskTest, LargeBatchRandomLengths)
     CUDA_CHECK(cudaMemcpy(kv_lens_d.data(), kv_lens.data(),
                           batch_size * sizeof(unsigned int), cudaMemcpyHostToDevice));
 
-    Tensor<unsigned int> max_seq_len_h({1}, CPU);
-    max_seq_len_h.data()[0] = max_q_len;
-
     Tensor<unsigned char> mask_d({batch_size, max_q_len, max_kv_len}, GPU);
 
-    launch_build_causal_mask(max_seq_len_h, q_lens_d, kv_lens_d, mask_d);
+    launch_build_causal_mask(max_q_len, max_kv_len, q_lens_d, kv_lens_d, mask_d);
     CUDA_KERNEL_LAUNCH_CHECK();
 
     Tensor<unsigned char> mask_h({batch_size, max_q_len, max_kv_len}, CPU);
@@ -222,7 +210,45 @@ TEST(BuildCausalMaskTest, LargeBatchRandomLengths)
                           mask_d.numel() * sizeof(unsigned char), cudaMemcpyDeviceToHost));
 
     std::vector<unsigned char> expected;
-    compute_expected_causal_mask(q_lens, kv_lens, max_q_len, max_kv_len, expected);
+    compute_expected_causal_mask(q_lens, kv_lens, max_q_len, max_kv_len, max_q_len, max_kv_len, expected);
+
+    for (unsigned int i = 0; i < mask_d.numel(); ++i)
+    {
+        ASSERT_EQ(mask_h.data()[i], expected[i]) << "mask mismatch at idx=" << i;
+    }
+}
+
+TEST(BuildCausalMaskTest, CacheLargerThanActual)
+{
+    // Mask is allocated with larger cache dims than the actual q/kv lengths.
+    const std::vector<unsigned int> q_lens = {2, 3};
+    const std::vector<unsigned int> kv_lens = {4, 5};
+    const unsigned int batch_size = static_cast<unsigned int>(q_lens.size());
+    const unsigned int max_q_len = 3;
+    const unsigned int max_kv_len = 5;
+    const unsigned int q_cache_len = 4;
+    const unsigned int kv_cache_len = 6;
+
+    Tensor<unsigned int> q_lens_d({batch_size}, GPU);
+    Tensor<unsigned int> kv_lens_d({batch_size}, GPU);
+    CUDA_CHECK(cudaMemcpy(q_lens_d.data(), q_lens.data(),
+                          batch_size * sizeof(unsigned int), cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(kv_lens_d.data(), kv_lens.data(),
+                          batch_size * sizeof(unsigned int), cudaMemcpyHostToDevice));
+
+    Tensor<unsigned char> mask_d({batch_size, q_cache_len, kv_cache_len}, GPU);
+    CUDA_CHECK(cudaMemset(mask_d.data(), 0, mask_d.numel() * sizeof(unsigned char)));
+
+    launch_build_causal_mask(max_q_len, max_kv_len, q_lens_d, kv_lens_d, mask_d);
+    CUDA_KERNEL_LAUNCH_CHECK();
+
+    Tensor<unsigned char> mask_h({batch_size, q_cache_len, kv_cache_len}, CPU);
+    CUDA_CHECK(cudaMemcpy(mask_h.data(), mask_d.data(),
+                          mask_d.numel() * sizeof(unsigned char), cudaMemcpyDeviceToHost));
+
+    std::vector<unsigned char> expected;
+    compute_expected_causal_mask(q_lens, kv_lens, max_q_len, max_kv_len,
+                                 q_cache_len, kv_cache_len, expected);
 
     for (unsigned int i = 0; i < mask_d.numel(); ++i)
     {

@@ -8,6 +8,12 @@ struct AddOp
     static __host__ __device__ T invoke(T a, T b) { return a + b; }
 };
 
+template <typename T>
+struct MaxOp
+{
+    static __host__ __device__ T invoke(T a, T b) { return a > b ? a : b; }
+};
+
 template <int warp_size, typename T, template <typename> class Op>
 __device__ __forceinline__ T shuffle_warp_reduce(T x)
 {

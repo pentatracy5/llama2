@@ -48,14 +48,11 @@ TEST(BuildPaddingIndexMapsTest, BasicTwoSequences)
                           num_seqs * sizeof(unsigned int), cudaMemcpyHostToDevice));
 
     Tensor<unsigned int> seq_offsets_d({num_seqs}, GPU);
-    Tensor<unsigned int> unpad_to_padded_idx_d({num_actual_tokens}, GPU);
+    Tensor<unsigned int> unpad_to_padded_idx_d({num_seqs, max_seq_len}, GPU);
 
     Tensor<unsigned int> input_ids({num_actual_tokens}, GPU);
-    Tensor<unsigned int> max_seq_len_h({1}, CPU);
-    CUDA_CHECK(cudaMemcpy(max_seq_len_h.data(), &max_seq_len,
-                          sizeof(unsigned int), cudaMemcpyHostToHost));
 
-    launch_build_padding_index_maps(input_ids, max_seq_len_h, seq_lens_d,
+    launch_build_padding_index_maps(input_ids, seq_lens_d,
                                     unpad_to_padded_idx_d, seq_offsets_d);
     CUDA_KERNEL_LAUNCH_CHECK();
 
@@ -91,14 +88,11 @@ TEST(BuildPaddingIndexMapsTest, SingleTokenSingleSequence)
                           num_seqs * sizeof(unsigned int), cudaMemcpyHostToDevice));
 
     Tensor<unsigned int> seq_offsets_d({num_seqs}, GPU);
-    Tensor<unsigned int> unpad_to_padded_idx_d({num_actual_tokens}, GPU);
+    Tensor<unsigned int> unpad_to_padded_idx_d({num_seqs, max_seq_len}, GPU);
 
     Tensor<unsigned int> input_ids({num_actual_tokens}, GPU);
-    Tensor<unsigned int> max_seq_len_h({1}, CPU);
-    CUDA_CHECK(cudaMemcpy(max_seq_len_h.data(), &max_seq_len,
-                          sizeof(unsigned int), cudaMemcpyHostToHost));
 
-    launch_build_padding_index_maps(input_ids, max_seq_len_h, seq_lens_d,
+    launch_build_padding_index_maps(input_ids, seq_lens_d,
                                     unpad_to_padded_idx_d, seq_offsets_d);
     CUDA_KERNEL_LAUNCH_CHECK();
 
@@ -125,14 +119,11 @@ TEST(BuildPaddingIndexMapsTest, UnequalLengths)
                           num_seqs * sizeof(unsigned int), cudaMemcpyHostToDevice));
 
     Tensor<unsigned int> seq_offsets_d({num_seqs}, GPU);
-    Tensor<unsigned int> unpad_to_padded_idx_d({num_actual_tokens}, GPU);
+    Tensor<unsigned int> unpad_to_padded_idx_d({num_seqs, max_seq_len}, GPU);
 
     Tensor<unsigned int> input_ids({num_actual_tokens}, GPU);
-    Tensor<unsigned int> max_seq_len_h({1}, CPU);
-    CUDA_CHECK(cudaMemcpy(max_seq_len_h.data(), &max_seq_len,
-                          sizeof(unsigned int), cudaMemcpyHostToHost));
 
-    launch_build_padding_index_maps(input_ids, max_seq_len_h, seq_lens_d,
+    launch_build_padding_index_maps(input_ids, seq_lens_d,
                                     unpad_to_padded_idx_d, seq_offsets_d);
     CUDA_KERNEL_LAUNCH_CHECK();
 
@@ -173,14 +164,11 @@ TEST(BuildPaddingIndexMapsTest, LargeBatch)
                           num_seqs * sizeof(unsigned int), cudaMemcpyHostToDevice));
 
     Tensor<unsigned int> seq_offsets_d({num_seqs}, GPU);
-    Tensor<unsigned int> unpad_to_padded_idx_d({num_actual_tokens}, GPU);
+    Tensor<unsigned int> unpad_to_padded_idx_d({num_seqs, max_seq_len}, GPU);
 
     Tensor<unsigned int> input_ids({num_actual_tokens}, GPU);
-    Tensor<unsigned int> max_seq_len_h({1}, CPU);
-    CUDA_CHECK(cudaMemcpy(max_seq_len_h.data(), &max_seq_len,
-                          sizeof(unsigned int), cudaMemcpyHostToHost));
 
-    launch_build_padding_index_maps(input_ids, max_seq_len_h, seq_lens_d,
+    launch_build_padding_index_maps(input_ids, seq_lens_d,
                                     unpad_to_padded_idx_d, seq_offsets_d);
     CUDA_KERNEL_LAUNCH_CHECK();
 

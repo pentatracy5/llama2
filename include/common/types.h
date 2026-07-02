@@ -2,11 +2,17 @@
 
 #include <cuda_fp16.h>
 
-struct alignas(16) __half8
+struct alignas(16) half8
 {
-    __half val[8];
-    __host__ __device__ inline const __half &operator[](int i) const { return val[i]; }
-    __host__ __device__ inline __half &operator[](int i) { return val[i]; }
+    half val[8];
+    __host__ __device__ inline const half &operator[](int i) const { return val[i]; }
+    __host__ __device__ inline half &operator[](int i) { return val[i]; }
+};
+
+template <typename T>
+struct Vec2
+{
+    T x[2];
 };
 
 template <typename T>
@@ -25,9 +31,9 @@ struct VecType<float>
 };
 
 template <>
-struct VecType<__half>
+struct VecType<half>
 {
-    using Type = __half8;
+    using Type = half8;
     static constexpr unsigned int vec_len = 8;
 };
 

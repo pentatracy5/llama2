@@ -56,40 +56,37 @@ __global__ void fused_pad_reshape_transpose_rope_kvcache(const unsigned int num_
         const unsigned int kv_len = kv_lens[seq_idx];
         const unsigned int history_len = kv_len - q_lens[seq_idx];
         unsigned int head_idx = threadIdx.y;
-        while (head_idx < q_head_num)
+        while (head_idx < total_head_num)
         {
             unsigned int idx_in_head = threadIdx.x;
-            while (idx_in_head < h_d)
+            if (head_idx < q_head_num) // q
             {
-                VEC2 x2 = embed[(idx * total_head_num + head_idx) * h_d + idx_in_head];
-                x2 = rotation<T, VEC2_SIZE>(token_idx + history_len, idx_in_head, head_dim, kv_len, x2);
-                q[((seq_idx * q_head_num + head_idx) * q_cache_len + token_idx) * h_d + idx_in_head] = x2;
-                idx_in_head += idx_in_head_stride;
+                while (idx_in_head < h_d)
+                {
+                    VEC2 x2 = embed[(idx * total_head_num + head_idx) * h_d + idx_in_head];
+                    x2 = rotation<T, VEC2_SIZE>(token_idx + history_len, idx_in_head, head_dim, kv_len, x2);
+                    q[((seq_idx * q_head_num + head_idx) * q_cache_len + token_idx) * h_d + idx_in_head] = x2;
+                    idx_in_head += idx_in_head_stride;
+                }
             }
-            head_idx += head_idx_stride;
-        }
-        head_idx = threadIdx.y;
-        while (head_idx < kv_head_num)
-        {
-            unsigned int idx_in_head = threadIdx.x;
-            while (idx_in_head < h_d)
+            else if (head_idx >= q_head_num && head_idx < q_head_num + kv_head_num) // k
             {
-                VEC2 x2 = embed[(idx * total_head_num + head_idx + q_head_num) * h_d + idx_in_head];
-                x2 = rotation<T, VEC2_SIZE>(token_idx + history_len, idx_in_head, head_dim, kv_len, x2);
-                k[((seq_idx * kv_head_num + head_idx) * kv_cache_len + token_idx + history_len) * h_d + idx_in_head] = x2;
-                idx_in_head += idx_in_head_stride;
+                while (idx_in_head < h_d)
+                {
+                    VEC2 x2 = embed[(idx * total_head_num + head_idx) * h_d + idx_in_head];
+                    x2 = rotation<T, VEC2_SIZE>(token_idx + history_len, idx_in_head, head_dim, kv_len, x2);
+                    k[((seq_idx * kv_head_num + head_idx - q_head_num) * kv_cache_len + token_idx + history_len) * h_d + idx_in_head] = x2;
+                    idx_in_head += idx_in_head_stride;
+                }
             }
-            head_idx += head_idx_stride;
-        }
-        head_idx = threadIdx.y;
-        while (head_idx < kv_head_num)
-        {
-            unsigned int idx_in_head = threadIdx.x;
-            while (idx_in_head < h_d)
+            else // v
             {
-                VEC2 x2 = embed[(idx * total_head_num + head_idx + q_head_num + kv_head_num) * h_d + idx_in_head];
-                v[((seq_idx * kv_head_num + head_idx) * kv_cache_len + token_idx + history_len) * h_d + idx_in_head] = x2;
-                idx_in_head += idx_in_head_stride;
+                while (idx_in_head < h_d)
+                {
+                    VEC2 x2 = embed[(idx * total_head_num + head_idx) * h_d + idx_in_head];
+                    v[((seq_idx * kv_head_num + head_idx - q_head_num - kv_head_num) * kv_cache_len + token_idx + history_len) * h_d + idx_in_head] = x2;
+                    idx_in_head += idx_in_head_stride;
+                }
             }
             head_idx += head_idx_stride;
         }

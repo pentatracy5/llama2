@@ -5,11 +5,11 @@
 #include <common/types.h>
 
 template <typename T>
-__device__ VecN<T, 2> rotation(const unsigned int token_idx,
-                               const unsigned int theta_idx,
-                               const unsigned int head_dim,
-                               const unsigned int seq_len,
-                               const VecN<T, 2> &input)
+__device__ VecN<T, 2> vec2_rope(const unsigned int token_idx,
+                                const unsigned int theta_idx,
+                                const unsigned int head_dim,
+                                const unsigned int seq_len,
+                                const VecN<T, 2> &input)
 {
     float theta = 1.f / powf(ROPE_BASE, 2.f * theta_idx / head_dim);
     float alpha = 1.f / powf(fmaxf(1.f, float(seq_len) / TRAIN_SEQ_LEN), 2.f * theta_idx / (head_dim - 2));
@@ -65,7 +65,7 @@ __global__ void fused_pad_reshape_transpose_rope_kvcache(const unsigned int num_
                 while (idx_in_head < h_d)
                 {
                     VEC2 x2 = embed[(idx * total_head_num + head_idx) * h_d + idx_in_head];
-                    x2 = rotation<T>(token_idx + history_len, idx_in_head, head_dim, kv_len, x2);
+                    x2 = vec2_rope<T>(token_idx + history_len, idx_in_head, head_dim, kv_len, x2);
                     q[((seq_idx * q_head_num + head_idx) * q_cache_len + token_idx) * h_d + idx_in_head] = x2;
                     idx_in_head += idx_in_head_stride;
                 }
@@ -75,7 +75,7 @@ __global__ void fused_pad_reshape_transpose_rope_kvcache(const unsigned int num_
                 while (idx_in_head < h_d)
                 {
                     VEC2 x2 = embed[(idx * total_head_num + head_idx) * h_d + idx_in_head];
-                    x2 = rotation<T>(token_idx + history_len, idx_in_head, head_dim, kv_len, x2);
+                    x2 = vec2_rope<T>(token_idx + history_len, idx_in_head, head_dim, kv_len, x2);
                     k[((seq_idx * kv_head_num + head_idx - q_head_num) * kv_cache_len + token_idx + history_len) * h_d + idx_in_head] = x2;
                     idx_in_head += idx_in_head_stride;
                 }

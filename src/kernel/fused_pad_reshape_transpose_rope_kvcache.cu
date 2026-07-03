@@ -3,23 +3,7 @@
 #include <common/config.h>
 #include <common/macro.h>
 #include <common/types.h>
-
-template <typename T>
-__device__ VecN<T, 2> vec2_rope(const unsigned int token_idx,
-                                const unsigned int theta_idx,
-                                const unsigned int head_dim,
-                                const unsigned int seq_len,
-                                const VecN<T, 2> &input)
-{
-    float theta = 1.f / powf(ROPE_BASE, 2.f * theta_idx / head_dim);
-    float alpha = 1.f / powf(fmaxf(1.f, float(seq_len) / TRAIN_SEQ_LEN), 2.f * theta_idx / (head_dim - 2));
-    float cos_value = cosf(token_idx * alpha * theta);
-    float sin_value = sinf(token_idx * alpha * theta);
-    VecN<T, 2> output;
-    output[0] = T(cos_value * float(input[0]) - sin_value * float(input[1]));
-    output[1] = T(sin_value * float(input[0]) + cos_value * float(input[1]));
-    return output;
-}
+#include <kernel/rope.cuh>
 
 template <typename T>
 __global__ void fused_pad_reshape_transpose_rope_kvcache(const unsigned int num_actual_tokens,

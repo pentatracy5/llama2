@@ -2,7 +2,7 @@
 #include <core/Tensor.cuh>
 #include <common/macro.h>
 #include <common/config.h>
-#include <common/reduction.cuh>
+#include <kernel/reduction.cuh>
 
 __global__ void update_q_kv_lens(const unsigned int batch_size,
                                  const unsigned int *q_lens,

@@ -2,7 +2,7 @@
 #include <core/Tensor.cuh>
 #include <common/types.h>
 #include <common/config.h>
-#include <common/reduction.cuh>
+#include <kernel/reduction.cuh>
 #include <cuda_fp16.h>
 
 template <typename T>

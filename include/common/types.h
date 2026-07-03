@@ -2,27 +2,19 @@
 
 #include <cuda_fp16.h>
 
-template <typename T>
-struct alignas(2 * sizeof(T)) Vec2
-{
-    T x[2];
-};
-
 template <typename T, unsigned int BYTE_SIZE>
 struct alignas(BYTE_SIZE) Vec
 {
+    static_assert((BYTE_SIZE & (BYTE_SIZE - 1)) == 0, "BYTE_SIZE must be power of two");
+    static_assert(BYTE_SIZE % sizeof(T) == 0, "Unsupported vectype");
     static constexpr unsigned int vec_len = BYTE_SIZE / sizeof(T);
     T x[vec_len];
     __host__ __device__ inline const T &operator[](unsigned int i) const { return x[i]; }
     __host__ __device__ inline T &operator[](unsigned int i) { return x[i]; }
 };
 
-template <typename T, unsigned int BYTE_SIZE>
-struct VecType
-{
-    using Type = Vec<T, BYTE_SIZE>;
-    static_assert(BYTE_SIZE % sizeof(T) == 0, "Unsupported vectype");
-};
+template <typename T, unsigned int N>
+using VecN = Vec<T, N * sizeof(T)>;
 
 enum DeviceType
 {

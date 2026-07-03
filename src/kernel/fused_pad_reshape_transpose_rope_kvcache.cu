@@ -4,20 +4,20 @@
 #include <common/macro.h>
 #include <common/types.h>
 
-template <typename T>
-__device__ Vec2<T> rotation(const unsigned int token_idx,
-                            const unsigned int theta_idx,
-                            const unsigned int head_dim,
-                            const unsigned int seq_len,
-                            const Vec2<T> &input)
+template <typename T, unsigned int VEC_SIZE>
+__device__ VecN<T, VEC_SIZE> rotation(const unsigned int token_idx,
+                                      const unsigned int theta_idx,
+                                      const unsigned int head_dim,
+                                      const unsigned int seq_len,
+                                      const VecN<T, VEC_SIZE> &input)
 {
     float theta = 1.f / powf(ROPE_BASE, 2.f * theta_idx / head_dim);
     float alpha = 1.f / powf(fmaxf(1.f, float(seq_len) / TRAIN_SEQ_LEN), 2.f * theta_idx / (head_dim - 2));
     float cos_value = cosf(token_idx * alpha * theta);
     float sin_value = sinf(token_idx * alpha * theta);
-    Vec2<T> output;
-    output.x[0] = T(cos_value * float(input.x[0]) - sin_value * float(input.x[1]));
-    output.x[1] = T(sin_value * float(input.x[0]) + cos_value * float(input.x[1]));
+    VecN<T, VEC_SIZE> output;
+    output[0] = T(cos_value * float(input[0]) - sin_value * float(input[1]));
+    output[1] = T(sin_value * float(input[0]) + cos_value * float(input[1]));
     return output;
 }
 
@@ -36,11 +36,13 @@ __global__ void fused_pad_reshape_transpose_rope_kvcache(const unsigned int num_
                                                          T *output_k,
                                                          T *output_v)
 {
-    const Vec2<T> *embed = reinterpret_cast<const Vec2<T> *>(input);
-    Vec2<T> *q = reinterpret_cast<Vec2<T> *>(output_q);
-    Vec2<T> *k = reinterpret_cast<Vec2<T> *>(output_k);
-    Vec2<T> *v = reinterpret_cast<Vec2<T> *>(output_v);
-    const unsigned int h_d = head_dim / 2;
+    constexpr unsigned int VEC2_SIZE = 2;
+    using VEC2 = typename VecN<T, VEC2_SIZE>;
+    const VEC2 *embed = reinterpret_cast<const VEC2 *>(input);
+    VEC2 *q = reinterpret_cast<VEC2 *>(output_q);
+    VEC2 *k = reinterpret_cast<VEC2 *>(output_k);
+    VEC2 *v = reinterpret_cast<VEC2 *>(output_v);
+    const unsigned int h_d = head_dim / VEC2_SIZE;
     const unsigned int total_head_num = q_head_num + 2 * kv_head_num;
     const unsigned int idx_stride = gridDim.x;
     const unsigned int head_idx_stride = blockDim.y;
@@ -59,8 +61,8 @@ __global__ void fused_pad_reshape_transpose_rope_kvcache(const unsigned int num_
             unsigned int idx_in_head = threadIdx.x;
             while (idx_in_head < h_d)
             {
-                Vec2<T> x2 = embed[(idx * total_head_num + head_idx) * h_d + idx_in_head];
-                x2 = rotation(token_idx + history_len, idx_in_head, head_dim, kv_len, x2);
+                VEC2 x2 = embed[(idx * total_head_num + head_idx) * h_d + idx_in_head];
+                x2 = rotation<T, VEC2_SIZE>(token_idx + history_len, idx_in_head, head_dim, kv_len, x2);
                 q[((seq_idx * q_head_num + head_idx) * q_cache_len + token_idx) * h_d + idx_in_head] = x2;
                 idx_in_head += idx_in_head_stride;
             }
@@ -72,8 +74,8 @@ __global__ void fused_pad_reshape_transpose_rope_kvcache(const unsigned int num_
             unsigned int idx_in_head = threadIdx.x;
             while (idx_in_head < h_d)
             {
-                Vec2<T> x2 = embed[(idx * total_head_num + head_idx + q_head_num) * h_d + idx_in_head];
-                x2 = rotation(token_idx + history_len, idx_in_head, head_dim, kv_len, x2);
+                VEC2 x2 = embed[(idx * total_head_num + head_idx + q_head_num) * h_d + idx_in_head];
+                x2 = rotation<T, VEC2_SIZE>(token_idx + history_len, idx_in_head, head_dim, kv_len, x2);
                 k[((seq_idx * kv_head_num + head_idx) * kv_cache_len + token_idx + history_len) * h_d + idx_in_head] = x2;
                 idx_in_head += idx_in_head_stride;
             }
@@ -85,7 +87,7 @@ __global__ void fused_pad_reshape_transpose_rope_kvcache(const unsigned int num_
             unsigned int idx_in_head = threadIdx.x;
             while (idx_in_head < h_d)
             {
-                Vec2<T> x2 = embed[(idx * total_head_num + head_idx + q_head_num + kv_head_num) * h_d + idx_in_head];
+                VEC2 x2 = embed[(idx * total_head_num + head_idx + q_head_num + kv_head_num) * h_d + idx_in_head];
                 v[((seq_idx * kv_head_num + head_idx) * kv_cache_len + token_idx + history_len) * h_d + idx_in_head] = x2;
                 idx_in_head += idx_in_head_stride;
             }

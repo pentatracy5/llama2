@@ -12,8 +12,8 @@ __global__ void rmsnorm_kernel(const unsigned int num_input_tokens,
                                const T *weights,
                                T *output_tokens)
 {
-    using SHARED_VECTYPE = typename VecType<T, SHARED_MEM_BANK_BYTE_SIZE>::Type;
-    using VECTYPE = typename VecType<SHARED_VECTYPE, CUDA_VEC_LS_BYTE_SIZE>::Type;
+    using SHARED_VECTYPE = typename Vec<T, SHARED_MEM_BANK_BYTE_SIZE>;
+    using VECTYPE = typename Vec<SHARED_VECTYPE, CUDA_VEC_LS_BYTE_SIZE>;
     constexpr unsigned int shared_vlen = SHARED_VECTYPE::vec_len;
     constexpr unsigned int vlen = VECTYPE::vec_len;
 

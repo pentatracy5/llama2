@@ -12,23 +12,31 @@ __global__ void rmsnorm_kernel(const unsigned int num_input_tokens,
                                const T *weights,
                                T *output_tokens)
 {
-    using VECTYPE = typename VecType<T>::Type;
-    constexpr unsigned int vlen = VecType<T>::vec_len;
+    using SHARED_VECTYPE = typename VecType<T, SHARED_MEM_BANK_BYTE_SIZE>::Type;
+    using VECTYPE = typename VecType<SHARED_VECTYPE, CUDA_VEC_LS_BYTE_SIZE>::Type;
+    constexpr unsigned int shared_vlen = SHARED_VECTYPE::vec_len;
+    constexpr unsigned int vlen = VECTYPE::vec_len;
 
     extern __shared__ char temp[];
     float *reduce_buf = reinterpret_cast<float *>(temp);
-    VECTYPE *shared_vec_weights = reinterpret_cast<VECTYPE *>(reduce_buf + WARPS_PER_BLOCK);
+    SHARED_VECTYPE *shared_vec_weights = reinterpret_cast<SHARED_VECTYPE *>(reduce_buf + WARPS_PER_BLOCK);
 
     const VECTYPE *vec_input_tokens = reinterpret_cast<const VECTYPE *>(input_tokens);
     const VECTYPE *vec_weights = reinterpret_cast<const VECTYPE *>(weights);
     VECTYPE *vec_output_tokens = reinterpret_cast<VECTYPE *>(output_tokens);
 
     unsigned int idx = threadIdx.x;
+    const unsigned int lane_id = idx % WARP_SIZE;
     const unsigned int idx_stride = blockDim.x;
-    const unsigned int vec_embed_dim = embed_dim / vlen;
+    const unsigned int vec_embed_dim = embed_dim / (vlen * shared_vlen);
     while (idx < vec_embed_dim)
     {
-        shared_vec_weights[idx] = vec_weights[idx];
+        const VECTYPE temp = vec_weights[idx];
+        const SHARED_VECTYPE *temp_ptr = reinterpret_cast<const SHARED_VECTYPE *>(&temp);
+        const unsigned int offset = idx / WARP_SIZE * WARP_SIZE * vlen;
+#pragma unroll vlen
+        for (unsigned int i = 0; i < vlen; i++)
+            shared_vec_weights[offset + i * WARP_SIZE + lane_id] = temp_ptr[i];
         idx += idx_stride;
     }
 
@@ -45,10 +53,11 @@ __global__ void rmsnorm_kernel(const unsigned int num_input_tokens,
         while (idx < vec_embed_dim)
         {
             const VECTYPE in = vec_input_tokens[token_idx * vec_embed_dim + idx];
-            const T *in_ptr = reinterpret_cast<const T *>(&in);
 #pragma unroll vlen
             for (unsigned int i = 0; i < vlen; i++)
-                x += float(in_ptr[i] * in_ptr[i]);
+#pragma unroll shared_vlen
+                for (unsigned int j = 0; j < shared_vlen; j++)
+                    x += float(in[i][j] * in[i][j]);
             idx += idx_stride;
         }
 
@@ -67,15 +76,14 @@ __global__ void rmsnorm_kernel(const unsigned int num_input_tokens,
         idx = threadIdx.x;
         while (idx < vec_embed_dim)
         {
+            const unsigned int offset = idx / WARP_SIZE * WARP_SIZE * vlen;
             const VECTYPE in = vec_input_tokens[token_idx * vec_embed_dim + idx];
-            const VECTYPE weight = shared_vec_weights[idx];
             VECTYPE out;
-            const T *in_ptr = reinterpret_cast<const T *>(&in);
-            const T *weight_ptr = reinterpret_cast<const T *>(&weight);
-            T *out_ptr = reinterpret_cast<T *>(&out);
 #pragma unroll vlen
             for (unsigned int i = 0; i < vlen; i++)
-                out_ptr[i] = in_ptr[i] * weight_ptr[i] * inv_var;
+#pragma unroll shared_vlen
+                for (unsigned int j = 0; j < shared_vlen; j++)
+                    out[i][j] = in[i][j] * shared_vec_weights[offset + i * WARP_SIZE + lane_id][j] * inv_var;
             vec_output_tokens[token_idx * vec_embed_dim + idx] = out;
             idx += idx_stride;
         }
@@ -91,9 +99,13 @@ void launch_rmsnorm(const Tensor<T> &input_tokens,
 {
     const dim3 threads_per_block{THREADS_PER_BLOCK};
     const dim3 nthreads{std::min(NUM_BLOCKS_X, input_tokens.shape()[0]) * threads_per_block.x};
-    const unsigned int shared_mem_bytes = WARPS_PER_BLOCK * sizeof(float) + input_tokens.shape()[1] * sizeof(T);
-    CUDA_LAUNCH_SHAREDMEM(rmsnorm_kernel, nthreads, threads_per_block, shared_mem_bytes)(input_tokens.shape()[0],
-                                                                                         input_tokens.shape()[1],
+    constexpr unsigned int WARP_GROUP_BYTES = WARP_SIZE * CUDA_VEC_LS_BYTE_SIZE;
+    const unsigned int num_input_tokens = input_tokens.shape()[0];
+    const unsigned int embed_dim = input_tokens.shape()[1];
+    const unsigned int weight_bytes = ((embed_dim * sizeof(T) + WARP_GROUP_BYTES - 1) / WARP_GROUP_BYTES) * WARP_GROUP_BYTES;
+    const unsigned int shared_mem_bytes = WARPS_PER_BLOCK * sizeof(float) + weight_bytes;
+    CUDA_LAUNCH_SHAREDMEM(rmsnorm_kernel, nthreads, threads_per_block, shared_mem_bytes)(num_input_tokens,
+                                                                                         embed_dim,
                                                                                          input_tokens.data(),
                                                                                          weights.data(),
                                                                                          output_tokens.data());

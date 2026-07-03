@@ -1,5 +1,7 @@
 #pragma once
 
+constexpr unsigned int SHARED_MEM_BANK_BYTE_SIZE = 4;
+constexpr unsigned int CUDA_VEC_LS_BYTE_SIZE = 16;
 constexpr unsigned int Q_CACHE_LEN = 512;
 constexpr unsigned int KV_CACHE_LEN = 8192;
 constexpr unsigned int THREADS_PER_BLOCK = 512;

@@ -11,8 +11,8 @@ __global__ void embedding_kernel(const unsigned int num_input_ids,
                                  const T *embed_table,
                                  T *output)
 {
-    using VECTYPE = typename VecType<T>::Type;
-    constexpr unsigned int vlen = VecType<T>::vec_len;
+    using VECTYPE = typename VecType<T, CUDA_VEC_LS_BYTE_SIZE>::Type;
+    constexpr unsigned int vlen = VECTYPE::vec_len;
 
     const VECTYPE *vec_embed_table = reinterpret_cast<const VECTYPE *>(embed_table);
     VECTYPE *vec_output = reinterpret_cast<VECTYPE *>(output);
@@ -34,8 +34,9 @@ void launch_embedding(const Tensor<unsigned int> &input_ids,
                       const Tensor<T> &embed_table,
                       Tensor<T> &output)
 {
+    constexpr unsigned int vlen = VecType<T, CUDA_VEC_LS_BYTE_SIZE>::Type::vec_len;
     const dim3 threads_per_block{THREADS_PER_BLOCK};
-    const dim3 nthreads{std::min(NUM_BLOCKS_X * threads_per_block.x, input_ids.shape()[0] * embed_table.shape()[1]) / VecType<T>::vec_len};
+    const dim3 nthreads{std::min(NUM_BLOCKS_X * threads_per_block.x, input_ids.shape()[0] * embed_table.shape()[1]) / vlen};
     CUDA_LAUNCH(embedding_kernel, nthreads, threads_per_block)(input_ids.shape()[0],
                                                                embed_table.shape()[1],
                                                                input_ids.data(),

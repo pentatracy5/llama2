@@ -87,7 +87,7 @@ void launch_fused_reshape_rope_kvcache_llama2_decode(const Tensor<T> &input,
     const unsigned int kv_head_num = k.shape()[1];
     assert(kv_head_num == v.shape()[1] && "Head num of k v do not match");
     assert(input.shape()[1] == (q_head_num + 2 * kv_head_num) * head_dim && "Incorrect embedding dim");
-    assert(batch_size == is_done.shape()[0] && "Incorrect batch size of sequence length");
+    assert(batch_size == is_done.shape()[0] && "Incorrect batch size of done flag");
     assert(batch_size == kv_lens.shape()[0] && "Incorrect batch size of sequence length");
     assert(batch_size == q.shape()[0] && "Batch size of q do not match");
     assert(batch_size == k.shape()[0] && "Batch size of k do not match");

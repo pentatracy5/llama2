@@ -32,7 +32,8 @@ enum DataType
     INT32,
     UINT32,
     BOOL,
-    BYTES
+    BYTES,
+    PTR
 };
 
 template <typename T>
@@ -82,4 +83,10 @@ template <>
 struct RealTypeToDataType<unsigned char>
 {
     static constexpr DataType dtype = BYTES;
+};
+
+template <>
+struct RealTypeToDataType<void *>
+{
+    static constexpr DataType dtype = PTR;
 };

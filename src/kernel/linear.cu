@@ -100,8 +100,6 @@ void launch_linear(cublasHandle_t &cublas_handle,
         assert(batch_count == B_array.numel() && "Illegal B array size");
         assert(batch_count == C_array.numel() && "Illegal C array size");
 
-        // We pass B as cuBLAS's A and A as cuBLAS's B to maintain row-major
-        // semantics, so the pointer arrays are swapped accordingly.
         const void *const *A_arr = B_array.data();
         const void *const *B_arr = A_array.data();
         void *const *C_arr = C_array.data();

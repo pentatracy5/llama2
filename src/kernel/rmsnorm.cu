@@ -107,11 +107,11 @@ void launch_rmsnorm(const Tensor<T> &input_tokens,
     const unsigned int embed_dim = input_tokens.shape()[1];
     const unsigned int weight_bytes = ((embed_dim * sizeof(T) + WARP_GROUP_BYTES - 1) / WARP_GROUP_BYTES) * WARP_GROUP_BYTES;
     const unsigned int shared_mem_bytes = WARPS_PER_BLOCK * sizeof(float) + weight_bytes;
-    CUDA_LAUNCH_SHAREDMEM(rmsnorm_kernel<T>, nthreads, threads_per_block, shared_mem_bytes)(num_input_tokens,
-                                                                                            embed_dim,
-                                                                                            input_tokens.data(),
-                                                                                            weights.data(),
-                                                                                            output_tokens.data());
+    CUDA_LAUNCH_SHAREDMEM(rmsnorm_kernel, nthreads, threads_per_block, shared_mem_bytes)(num_input_tokens,
+                                                                                         embed_dim,
+                                                                                         input_tokens.data(),
+                                                                                         weights.data(),
+                                                                                         output_tokens.data());
     CUDA_KERNEL_LAUNCH_CHECK();
 }
 

@@ -55,14 +55,14 @@ void launch_build_causal_mask(const unsigned int max_q_len,
     const dim3 threads_per_block{std::min(THREADS_PER_BLOCK, (max_kv_len + WARP_SIZE - 1) / WARP_SIZE * WARP_SIZE)};
     const dim3 nthreads{std::min(NUM_BLOCKS_X, max_q_len) * threads_per_block.x,
                         std::min(NUM_BLOCKS_Y, batch_size) * threads_per_block.y};
-    CUDA_LAUNCH(build_causal_mask_kernel<T>, nthreads, threads_per_block)(batch_size,
-                                                                          q_cache_len,
-                                                                          kv_cache_len,
-                                                                          max_q_len,
-                                                                          max_kv_len,
-                                                                          q_lens.data(),
-                                                                          kv_lens.data(),
-                                                                          mask.data());
+    CUDA_LAUNCH(build_causal_mask_kernel, nthreads, threads_per_block)(batch_size,
+                                                                       q_cache_len,
+                                                                       kv_cache_len,
+                                                                       max_q_len,
+                                                                       max_kv_len,
+                                                                       q_lens.data(),
+                                                                       kv_lens.data(),
+                                                                       mask.data());
     CUDA_KERNEL_LAUNCH_CHECK();
 }
 

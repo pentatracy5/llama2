@@ -28,7 +28,7 @@ static void compute_expected_rmsnorm(const std::vector<float> &input,
             float x = input[t * embed_dim + d];
             sq_sum += x * x;
         }
-        float inv_rms = 1.0f / std::sqrt(sq_sum / static_cast<float>(embed_dim) + EPS);
+        float inv_rms = 1.0f / std::sqrt(sq_sum / static_cast<float>(embed_dim) + RMSNORM_EPS);
 
         for (unsigned int d = 0; d < embed_dim; ++d)
         {

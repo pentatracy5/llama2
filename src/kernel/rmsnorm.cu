@@ -68,7 +68,7 @@ __global__ void rmsnorm_kernel(const unsigned int num_input_tokens,
         if (tid < WARPS_PER_BLOCK)
             x = shuffle_warp_reduce<WARPS_PER_BLOCK, float, AddOp>(reduce_buf[tid]);
         if (0 == tid)
-            reduce_buf[0] = rsqrtf(x / embed_dim + EPS);
+            reduce_buf[0] = rsqrtf(x / embed_dim + RMSNORM_EPS);
         __syncthreads();
         T inv_var = reduce_buf[0];
         __syncthreads();

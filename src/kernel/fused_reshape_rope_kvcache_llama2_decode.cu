@@ -1,9 +1,12 @@
 #include <kernel/fused_reshape_rope_kvcache_llama2_decode.h>
-#include <core/Tensor.cuh>
-#include <common/config.h>
-#include <common/macro.h>
-#include <common/types.h>
 #include <kernel/rope.cuh>
+#include <core/Tensor.cuh>
+#include <common/types.h>
+#include <common/macro.h>
+#include <common/config.h>
+#include <cuda_fp16.h>
+#include <cuda_runtime.h>
+#include <device_launch_parameters.h>
 
 template <typename T>
 __global__ void fused_reshape_rope_kvcache_llama2_decode(const unsigned int batch_size,

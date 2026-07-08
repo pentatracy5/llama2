@@ -1,6 +1,10 @@
 #include <kernel/build_q_k_v_qk_qkv_array.h>
 #include <core/Tensor.cuh>
+#include <common/macro.h>
 #include <common/config.h>
+#include <cuda_fp16.h>
+#include <cuda_runtime.h>
+#include <device_launch_parameters.h>
 
 template <typename T>
 __global__ void build_q_k_v_qk_qkv_array(const unsigned int batch_size,

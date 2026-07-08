@@ -1,6 +1,9 @@
 #include <kernel/build_padding_index_maps.h>
 #include <core/Tensor.cuh>
+#include <common/macro.h>
 #include <common/config.h>
+#include <cuda_runtime.h>
+#include <device_launch_parameters.h>
 
 __global__ void build_padding_index_maps_kernel(const unsigned int num_actual_tokens,
                                                 const unsigned int q_cache_len,

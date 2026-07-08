@@ -1,9 +1,12 @@
 #include <kernel/rmsnorm.h>
+#include <kernel/reduction.cuh>
 #include <core/Tensor.cuh>
 #include <common/types.h>
+#include <common/macro.h>
 #include <common/config.h>
-#include <kernel/reduction.cuh>
 #include <cuda_fp16.h>
+#include <cuda_runtime.h>
+#include <device_launch_parameters.h>
 
 template <typename T>
 __global__ void rmsnorm_kernel(const unsigned int num_input_tokens,

@@ -1,8 +1,10 @@
 #include <kernel/update_q_kv_lens.h>
+#include <kernel/reduction.cuh>
 #include <core/Tensor.cuh>
 #include <common/macro.h>
 #include <common/config.h>
-#include <kernel/reduction.cuh>
+#include <cuda_runtime.h>
+#include <device_launch_parameters.h>
 
 __global__ void update_q_kv_lens(const unsigned int batch_size,
                                  const unsigned int *q_lens,

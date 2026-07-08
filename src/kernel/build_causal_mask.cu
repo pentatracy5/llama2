@@ -1,6 +1,9 @@
 #include <kernel/build_causal_mask.h>
 #include <core/Tensor.cuh>
+#include <common/macro.h>
 #include <common/config.h>
+#include <cuda_runtime.h>
+#include <device_launch_parameters.h>
 
 template <typename T>
 __global__ void build_causal_mask_kernel(const unsigned int batch_size,

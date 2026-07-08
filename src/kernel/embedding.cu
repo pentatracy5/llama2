@@ -1,8 +1,11 @@
 #include <kernel/embedding.h>
 #include <core/Tensor.cuh>
 #include <common/types.h>
+#include <common/macro.h>
 #include <common/config.h>
 #include <cuda_fp16.h>
+#include <cuda_runtime.h>
+#include <device_launch_parameters.h>
 
 template <typename T>
 __global__ void embedding_kernel(const unsigned int num_input_ids,

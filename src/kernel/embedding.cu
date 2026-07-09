@@ -8,7 +8,7 @@
 #include <device_launch_parameters.h>
 
 template <typename T>
-__global__ void embedding_kernel(const unsigned int num_input_ids,
+__global__ void embedding_kernel(const unsigned int num_input_tokens,
                                  const unsigned int embed_dim,
                                  const unsigned int *input_ids,
                                  const T *embed_table,
@@ -23,7 +23,7 @@ __global__ void embedding_kernel(const unsigned int num_input_ids,
     unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
     const unsigned int stride = blockDim.x * gridDim.x;
     const unsigned int vec_embed_dim = embed_dim / vlen;
-    const unsigned int total_vec_nums = num_input_ids * vec_embed_dim;
+    const unsigned int total_vec_nums = num_input_tokens * vec_embed_dim;
     while (idx < total_vec_nums)
     {
         unsigned int token_id = idx / vec_embed_dim;

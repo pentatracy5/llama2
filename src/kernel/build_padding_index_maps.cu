@@ -5,7 +5,7 @@
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 
-__global__ void build_padding_index_maps_kernel(const unsigned int num_actual_tokens,
+__global__ void build_padding_index_maps_kernel(const unsigned int num_input_tokens,
                                                 const unsigned int q_cache_len,
                                                 const unsigned int *seq_lens,
                                                 unsigned int *unpad_to_padded_idx,
@@ -13,7 +13,7 @@ __global__ void build_padding_index_maps_kernel(const unsigned int num_actual_to
 {
     unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
     unsigned int stride = blockDim.x * gridDim.x;
-    while (idx < num_actual_tokens)
+    while (idx < num_input_tokens)
     {
         unsigned int accumulate_len = 0;
         unsigned int seq_id = 0;

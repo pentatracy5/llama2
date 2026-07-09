@@ -13,11 +13,11 @@ static void compute_unpad_to_padded_idx(const std::vector<unsigned int> &q_lens,
                                         unsigned int q_cache_len,
                                         std::vector<unsigned int> &unpad_to_padded_idx)
 {
-    unsigned int num_actual_tokens = 0;
+    unsigned int num_input_tokens = 0;
     for (unsigned int len : q_lens)
-        num_actual_tokens += len;
+        num_input_tokens += len;
 
-    unpad_to_padded_idx.resize(num_actual_tokens);
+    unpad_to_padded_idx.resize(num_input_tokens);
 
     unsigned int accumulate_len = 0;
     for (unsigned int seq_id = 0; seq_id < q_lens.size(); ++seq_id)
@@ -136,7 +136,7 @@ TEST(FusedPadReshapeTransposeRopeKVCacheTest, BasicTwoSequences)
     const unsigned int kv_cache_len = 32;
     const std::vector<unsigned int> q_lens = {2, 3};
     const std::vector<unsigned int> kv_lens = {3, 6};
-    const unsigned int num_actual_tokens = 5;
+    const unsigned int num_input_tokens = 5;
 
     Tensor<unsigned int> q_lens_d({batch_size}, GPU);
     Tensor<unsigned int> kv_lens_d({batch_size}, GPU);
@@ -148,16 +148,16 @@ TEST(FusedPadReshapeTransposeRopeKVCacheTest, BasicTwoSequences)
     std::vector<unsigned int> unpad_to_padded_idx;
     compute_unpad_to_padded_idx(q_lens, q_cache_len, unpad_to_padded_idx);
 
-    Tensor<unsigned int> unpad_to_padded_idx_d({num_actual_tokens}, GPU);
+    Tensor<unsigned int> unpad_to_padded_idx_d({num_input_tokens}, GPU);
     CUDA_CHECK(cudaMemcpy(unpad_to_padded_idx_d.data(), unpad_to_padded_idx.data(),
-                          num_actual_tokens * sizeof(unsigned int), cudaMemcpyHostToDevice));
+                          num_input_tokens * sizeof(unsigned int), cudaMemcpyHostToDevice));
 
     const unsigned int total_head_num = q_head_num + 2 * kv_head_num;
-    std::vector<float> input(num_actual_tokens * total_head_num * head_dim);
+    std::vector<float> input(num_input_tokens * total_head_num * head_dim);
     for (unsigned int i = 0; i < input.size(); ++i)
         input[i] = static_cast<float>(i % 17) * 0.1f - 0.8f;
 
-    Tensor<float> input_d({num_actual_tokens, total_head_num * head_dim}, GPU);
+    Tensor<float> input_d({num_input_tokens, total_head_num * head_dim}, GPU);
     CUDA_CHECK(cudaMemcpy(input_d.data(), input.data(),
                           input.size() * sizeof(float), cudaMemcpyHostToDevice));
 
@@ -204,7 +204,7 @@ TEST(FusedPadReshapeTransposeRopeKVCacheTest, SingleSequenceFirstForward)
     const unsigned int kv_cache_len = 16;
     const std::vector<unsigned int> q_lens = {3};
     const std::vector<unsigned int> kv_lens = {3};
-    const unsigned int num_actual_tokens = 3;
+    const unsigned int num_input_tokens = 3;
 
     Tensor<unsigned int> q_lens_d({batch_size}, GPU);
     Tensor<unsigned int> kv_lens_d({batch_size}, GPU);
@@ -216,16 +216,16 @@ TEST(FusedPadReshapeTransposeRopeKVCacheTest, SingleSequenceFirstForward)
     std::vector<unsigned int> unpad_to_padded_idx;
     compute_unpad_to_padded_idx(q_lens, q_cache_len, unpad_to_padded_idx);
 
-    Tensor<unsigned int> unpad_to_padded_idx_d({num_actual_tokens}, GPU);
+    Tensor<unsigned int> unpad_to_padded_idx_d({num_input_tokens}, GPU);
     CUDA_CHECK(cudaMemcpy(unpad_to_padded_idx_d.data(), unpad_to_padded_idx.data(),
-                          num_actual_tokens * sizeof(unsigned int), cudaMemcpyHostToDevice));
+                          num_input_tokens * sizeof(unsigned int), cudaMemcpyHostToDevice));
 
     const unsigned int total_head_num = q_head_num + 2 * kv_head_num;
-    std::vector<float> input(num_actual_tokens * total_head_num * head_dim);
+    std::vector<float> input(num_input_tokens * total_head_num * head_dim);
     for (unsigned int i = 0; i < input.size(); ++i)
         input[i] = static_cast<float>(i) * 0.05f - 0.5f;
 
-    Tensor<float> input_d({num_actual_tokens, total_head_num * head_dim}, GPU);
+    Tensor<float> input_d({num_input_tokens, total_head_num * head_dim}, GPU);
     CUDA_CHECK(cudaMemcpy(input_d.data(), input.data(),
                           input.size() * sizeof(float), cudaMemcpyHostToDevice));
 
@@ -274,7 +274,7 @@ TEST(FusedPadReshapeTransposeRopeKVCacheTest, IncrementalDecoding)
     const unsigned int kv_cache_len = 32;
     const std::vector<unsigned int> q_lens = {1, 1, 1};
     const std::vector<unsigned int> kv_lens = {4, 9, 15};
-    const unsigned int num_actual_tokens = 3;
+    const unsigned int num_input_tokens = 3;
 
     Tensor<unsigned int> q_lens_d({batch_size}, GPU);
     Tensor<unsigned int> kv_lens_d({batch_size}, GPU);
@@ -286,16 +286,16 @@ TEST(FusedPadReshapeTransposeRopeKVCacheTest, IncrementalDecoding)
     std::vector<unsigned int> unpad_to_padded_idx;
     compute_unpad_to_padded_idx(q_lens, q_cache_len, unpad_to_padded_idx);
 
-    Tensor<unsigned int> unpad_to_padded_idx_d({num_actual_tokens}, GPU);
+    Tensor<unsigned int> unpad_to_padded_idx_d({num_input_tokens}, GPU);
     CUDA_CHECK(cudaMemcpy(unpad_to_padded_idx_d.data(), unpad_to_padded_idx.data(),
-                          num_actual_tokens * sizeof(unsigned int), cudaMemcpyHostToDevice));
+                          num_input_tokens * sizeof(unsigned int), cudaMemcpyHostToDevice));
 
     const unsigned int total_head_num = q_head_num + 2 * kv_head_num;
-    std::vector<float> input(num_actual_tokens * total_head_num * head_dim);
+    std::vector<float> input(num_input_tokens * total_head_num * head_dim);
     for (unsigned int i = 0; i < input.size(); ++i)
         input[i] = static_cast<float>(i % 23) * 0.05f - 0.5f;
 
-    Tensor<float> input_d({num_actual_tokens, total_head_num * head_dim}, GPU);
+    Tensor<float> input_d({num_input_tokens, total_head_num * head_dim}, GPU);
     CUDA_CHECK(cudaMemcpy(input_d.data(), input.data(),
                           input.size() * sizeof(float), cudaMemcpyHostToDevice));
 

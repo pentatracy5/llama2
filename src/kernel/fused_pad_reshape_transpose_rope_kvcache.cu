@@ -9,7 +9,7 @@
 #include <device_launch_parameters.h>
 
 template <typename T>
-__global__ void fused_pad_reshape_transpose_rope_kvcache(const unsigned int num_actual_tokens,
+__global__ void fused_pad_reshape_transpose_rope_kvcache(const unsigned int num_input_tokens,
                                                          const unsigned int q_cache_len,
                                                          const unsigned int kv_cache_len,
                                                          const unsigned int q_head_num,
@@ -36,7 +36,7 @@ __global__ void fused_pad_reshape_transpose_rope_kvcache(const unsigned int num_
     const unsigned int head_idx_stride = blockDim.y;
     const unsigned int idx_in_head_stride = blockDim.x;
     unsigned int idx = blockIdx.x;
-    while (idx < num_actual_tokens)
+    while (idx < num_input_tokens)
     {
         const unsigned int padded_idx = unpad_to_padded_idx[idx];
         const unsigned int seq_idx = padded_idx / q_cache_len;
@@ -91,7 +91,7 @@ void launch_fused_pad_reshape_transpose_rope_kvcache(const Tensor<T> &input,
                                                      Tensor<T> &k,
                                                      Tensor<T> &v)
 {
-    const unsigned int num_actual_tokens = input.shape()[0];
+    const unsigned int num_input_tokens = input.shape()[0];
     const unsigned int head_dim = q.shape()[3];
     assert(head_dim % 2 == 0 && "Head dim should be even");
     assert(head_dim == k.shape()[3] && "Head dim of q k do not match");
@@ -108,8 +108,8 @@ void launch_fused_pad_reshape_transpose_rope_kvcache(const Tensor<T> &input,
     const unsigned int kv_cache_len = k.shape()[2];
     assert(kv_cache_len == v.shape()[2] && "k v cache length do not match");
     const dim3 threads_per_block{WARP_SIZE, THREADS_PER_BLOCK / WARP_SIZE};
-    const dim3 n_threads{std::min(NUM_BLOCKS_X, num_actual_tokens) * threads_per_block.x, threads_per_block.y};
-    CUDA_LAUNCH(fused_pad_reshape_transpose_rope_kvcache, n_threads, threads_per_block)(num_actual_tokens,
+    const dim3 n_threads{std::min(NUM_BLOCKS_X, num_input_tokens) * threads_per_block.x, threads_per_block.y};
+    CUDA_LAUNCH(fused_pad_reshape_transpose_rope_kvcache, n_threads, threads_per_block)(num_input_tokens,
                                                                                         q_cache_len,
                                                                                         kv_cache_len,
                                                                                         q_head_num,

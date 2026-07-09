@@ -6,7 +6,7 @@
 #include <cuda_fp16.h>
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
-#include <corecrt_math.h>
+#include <cmath>
 #include <algorithm>
 
 template <typename T, typename MASK_T>

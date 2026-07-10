@@ -27,14 +27,14 @@ __global__ void build_padding_index_maps_kernel(const unsigned int num_input_tok
     }
 }
 
-void launch_build_padding_index_maps(const Tensor<unsigned int> &input_ids,
+void launch_build_padding_index_maps(const unsigned int num_input_tokens,
                                      const Tensor<unsigned int> &seq_lens,
                                      Tensor<unsigned int> &unpad_to_pad_idx,
                                      Tensor<unsigned int> &seq_offsets)
 {
     const dim3 threads_per_block{THREADS_PER_BLOCK};
-    const dim3 nthreads{std::min(NUM_BLOCKS_X * threads_per_block.x, input_ids.shape()[0])};
-    CUDA_LAUNCH(build_padding_index_maps_kernel, nthreads, threads_per_block)(input_ids.shape()[0],
+    const dim3 nthreads{std::min(NUM_BLOCKS_X * threads_per_block.x, num_input_tokens)};
+    CUDA_LAUNCH(build_padding_index_maps_kernel, nthreads, threads_per_block)(num_input_tokens,
                                                                               unpad_to_pad_idx.shape()[1],
                                                                               seq_lens.data(),
                                                                               unpad_to_pad_idx.data(),

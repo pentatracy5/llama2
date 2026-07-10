@@ -60,7 +60,8 @@ static std::vector<float> vector_to_float(const std::vector<T> &src)
 }
 
 // ------------------------------------------------------------------
-// Helpers: compute prefix sum of sequence lengths as seq_offsets.
+// Helpers: compute prefix sum of sequence lengths and the token-level
+// mapping from unpad positions to padded (seq_id, token_id) positions.
 // ------------------------------------------------------------------
 static std::vector<unsigned int> compute_seq_offsets(const std::vector<unsigned int> &q_lens)
 {
@@ -72,6 +73,24 @@ static std::vector<unsigned int> compute_seq_offsets(const std::vector<unsigned 
         accumulate_len += q_lens[i];
     }
     return seq_offsets;
+}
+
+static std::vector<unsigned int> compute_unpad_to_pad_idx(
+    unsigned int batch_size,
+    unsigned int q_cache_len,
+    const std::vector<unsigned int> &q_lens)
+{
+    const std::vector<unsigned int> seq_offsets = compute_seq_offsets(q_lens);
+    std::vector<unsigned int> unpad_to_pad_idx(batch_size * q_cache_len, 0);
+    for (unsigned int b = 0; b < batch_size; ++b)
+    {
+        for (unsigned int t = 0; t < q_lens[b]; ++t)
+        {
+            const unsigned int global_token = seq_offsets[b] + t;
+            unpad_to_pad_idx[global_token] = b * q_cache_len + t;
+        }
+    }
+    return unpad_to_pad_idx;
 }
 
 // ------------------------------------------------------------------
@@ -87,8 +106,6 @@ static void run_fused_transpose_unpad_test(unsigned int batch_size,
 {
     const unsigned int num_input_tokens =
         std::accumulate(q_lens.begin(), q_lens.end(), 0u);
-    const unsigned int max_q_len =
-        *std::max_element(q_lens.begin(), q_lens.end());
 
     ASSERT_EQ(q_lens.size(), batch_size);
 
@@ -108,20 +125,17 @@ static void run_fused_transpose_unpad_test(unsigned int batch_size,
     CUDA_CHECK(cudaMemcpy(qkv_d.data(), qkv_h.data(),
                           qkv_h.size() * sizeof(T), cudaMemcpyHostToDevice));
 
-    Tensor<unsigned int> q_lens_d({batch_size}, GPU);
-    CUDA_CHECK(cudaMemcpy(q_lens_d.data(), q_lens.data(),
-                          batch_size * sizeof(unsigned int), cudaMemcpyHostToDevice));
-
-    const std::vector<unsigned int> seq_offsets = compute_seq_offsets(q_lens);
-    Tensor<unsigned int> seq_offsets_d({batch_size}, GPU);
-    CUDA_CHECK(cudaMemcpy(seq_offsets_d.data(), seq_offsets.data(),
-                          batch_size * sizeof(unsigned int), cudaMemcpyHostToDevice));
+    const std::vector<unsigned int> unpad_to_pad_idx =
+        compute_unpad_to_pad_idx(batch_size, q_cache_len, q_lens);
+    Tensor<unsigned int> unpad_to_pad_idx_d({batch_size, q_cache_len}, GPU);
+    CUDA_CHECK(cudaMemcpy(unpad_to_pad_idx_d.data(), unpad_to_pad_idx.data(),
+                          unpad_to_pad_idx.size() * sizeof(unsigned int), cudaMemcpyHostToDevice));
 
     Tensor<T> unpad_qkv_d({num_input_tokens, q_head_num * head_size}, GPU);
     CUDA_CHECK(cudaMemset(unpad_qkv_d.data(), 0,
                           unpad_qkv_d.numel() * sizeof(T)));
 
-    launch_fused_transpose_unpad<T>(max_q_len, qkv_d, seq_offsets_d, q_lens_d, unpad_qkv_d);
+    launch_fused_transpose_unpad<T>(num_input_tokens, qkv_d, unpad_to_pad_idx_d, unpad_qkv_d);
     CUDA_KERNEL_LAUNCH_CHECK();
 
     std::vector<T> unpad_qkv_h(unpad_qkv_d.numel());
@@ -131,6 +145,7 @@ static void run_fused_transpose_unpad_test(unsigned int batch_size,
 
     // Build expected result on the host.  Invalid/padding positions stay 0
     // because we memset the output tensor before launching.
+    const std::vector<unsigned int> seq_offsets = compute_seq_offsets(q_lens);
     std::vector<float> expected(num_input_tokens * q_head_num * head_size, 0.0f);
     for (unsigned int b = 0; b < batch_size; ++b)
     {

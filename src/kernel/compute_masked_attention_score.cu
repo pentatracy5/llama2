@@ -10,15 +10,15 @@
 #include <algorithm>
 
 template <typename T, typename MASK_T>
-__global__ void compute_masked_attention_score(const float scale,
-                                               const unsigned int batch_size,
-                                               const unsigned int q_head_num,
-                                               const unsigned int q_cache_len,
-                                               const unsigned int kv_cache_len,
-                                               const unsigned int max_kv_len,
-                                               const unsigned int *q_lens,
-                                               const MASK_T *mask,
-                                               T *qk)
+__global__ void compute_masked_attention_score_kernel(const float scale,
+                                                      const unsigned int batch_size,
+                                                      const unsigned int q_head_num,
+                                                      const unsigned int q_cache_len,
+                                                      const unsigned int kv_cache_len,
+                                                      const unsigned int max_kv_len,
+                                                      const unsigned int *q_lens,
+                                                      const MASK_T *mask,
+                                                      T *qk)
 {
     extern __shared__ float reduce_buf[];
     const unsigned int tid = threadIdx.x;
@@ -127,15 +127,15 @@ void launch_compute_masked_attention_score(const unsigned int head_dim,
                          std::min(q_head_num, NUM_BLOCKS_Y) * threads_per_block.y,
                          std::min(batch_size, NUM_BLOCKS_Z) * threads_per_block.z};
     const unsigned int shared_mem_bytes = WARPS_PER_BLOCK * sizeof(float);
-    CUDA_LAUNCH_SHAREDMEM(compute_masked_attention_score, n_threads, threads_per_block, shared_mem_bytes)(inv_sqrt_head_dim,
-                                                                                                          batch_size,
-                                                                                                          q_head_num,
-                                                                                                          q_cache_len,
-                                                                                                          kv_cache_len,
-                                                                                                          max_kv_len,
-                                                                                                          q_lens.data(),
-                                                                                                          mask.data(),
-                                                                                                          qk.data());
+    CUDA_LAUNCH_SHAREDMEM(compute_masked_attention_score_kernel, n_threads, threads_per_block, shared_mem_bytes)(inv_sqrt_head_dim,
+                                                                                                                 batch_size,
+                                                                                                                 q_head_num,
+                                                                                                                 q_cache_len,
+                                                                                                                 kv_cache_len,
+                                                                                                                 max_kv_len,
+                                                                                                                 q_lens.data(),
+                                                                                                                 mask.data(),
+                                                                                                                 qk.data());
     CUDA_KERNEL_LAUNCH_CHECK();
 }
 

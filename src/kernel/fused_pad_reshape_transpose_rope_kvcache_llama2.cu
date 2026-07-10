@@ -9,18 +9,18 @@
 #include <device_launch_parameters.h>
 
 template <typename T>
-__global__ void fused_pad_reshape_transpose_rope_kvcache_llama2(const unsigned int num_input_tokens,
-                                                                const unsigned int q_cache_len,
-                                                                const unsigned int kv_cache_len,
-                                                                const unsigned int q_head_num,
-                                                                const unsigned int kv_head_num,
-                                                                const unsigned int *q_lens,
-                                                                const unsigned int *kv_lens,
-                                                                const unsigned int *unpad_to_pad_idx,
-                                                                const T *input,
-                                                                T *output_q,
-                                                                T *output_k,
-                                                                T *output_v)
+__global__ void fused_pad_reshape_transpose_rope_kvcache_llama2_kernel(const unsigned int num_input_tokens,
+                                                                       const unsigned int q_cache_len,
+                                                                       const unsigned int kv_cache_len,
+                                                                       const unsigned int q_head_num,
+                                                                       const unsigned int kv_head_num,
+                                                                       const unsigned int *q_lens,
+                                                                       const unsigned int *kv_lens,
+                                                                       const unsigned int *unpad_to_pad_idx,
+                                                                       const T *input,
+                                                                       T *output_q,
+                                                                       T *output_k,
+                                                                       T *output_v)
 {
     constexpr unsigned int VEC4_SIZE = 4;
     using VEC4 = typename VecN<T, VEC4_SIZE>;
@@ -101,18 +101,18 @@ void launch_fused_pad_reshape_transpose_rope_kvcache_llama2(const Tensor<T> &inp
     assert(kv_cache_len == v.shape()[2] && "k v cache length do not match");
     const dim3 threads_per_block{WARP_SIZE, THREADS_PER_BLOCK / WARP_SIZE};
     const dim3 n_threads{std::min(NUM_BLOCKS_X, num_input_tokens) * threads_per_block.x, threads_per_block.y};
-    CUDA_LAUNCH(fused_pad_reshape_transpose_rope_kvcache_llama2, n_threads, threads_per_block)(num_input_tokens,
-                                                                                               q_cache_len,
-                                                                                               kv_cache_len,
-                                                                                               q_head_num,
-                                                                                               kv_head_num,
-                                                                                               q_lens.data(),
-                                                                                               kv_lens.data(),
-                                                                                               unpad_to_pad_idx.data(),
-                                                                                               input.data(),
-                                                                                               q.data(),
-                                                                                               k.data(),
-                                                                                               v.data());
+    CUDA_LAUNCH(fused_pad_reshape_transpose_rope_kvcache_llama2_kernel, n_threads, threads_per_block)(num_input_tokens,
+                                                                                                      q_cache_len,
+                                                                                                      kv_cache_len,
+                                                                                                      q_head_num,
+                                                                                                      kv_head_num,
+                                                                                                      q_lens.data(),
+                                                                                                      kv_lens.data(),
+                                                                                                      unpad_to_pad_idx.data(),
+                                                                                                      input.data(),
+                                                                                                      q.data(),
+                                                                                                      k.data(),
+                                                                                                      v.data());
     CUDA_KERNEL_LAUNCH_CHECK();
 }
 

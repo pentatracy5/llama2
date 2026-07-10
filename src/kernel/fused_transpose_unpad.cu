@@ -9,13 +9,13 @@
 #include <algorithm>
 
 template <typename T>
-__global__ void fused_transpose_unpad(const unsigned int num_input_tokens,
-                                      const unsigned int q_head_num,
-                                      const unsigned int q_cache_len,
-                                      const unsigned int head_size,
-                                      const unsigned int *unpad_to_pad_idx,
-                                      const T *qkv,
-                                      T *unpad_qkv)
+__global__ void fused_transpose_unpad_kernel(const unsigned int num_input_tokens,
+                                             const unsigned int q_head_num,
+                                             const unsigned int q_cache_len,
+                                             const unsigned int head_size,
+                                             const unsigned int *unpad_to_pad_idx,
+                                             const T *qkv,
+                                             T *unpad_qkv)
 {
     using VECTYPE = typename Vec<T, CUDA_VEC_LS_BYTE_SIZE>;
     constexpr unsigned int vlen = VECTYPE::vec_len;
@@ -62,13 +62,13 @@ void launch_fused_transpose_unpad(const unsigned int num_input_tokens,
     const dim3 threads_per_block{std::min(THREADS_PER_BLOCK, (head_size / vlen + WARP_SIZE - 1) / WARP_SIZE * WARP_SIZE)};
     const dim3 n_threads{std::min(NUM_BLOCKS_X, q_head_num) * threads_per_block.x,
                          std::min(NUM_BLOCKS_Y, num_input_tokens) * threads_per_block.y};
-    CUDA_LAUNCH(fused_transpose_unpad, n_threads, threads_per_block)(num_input_tokens,
-                                                                     q_head_num,
-                                                                     q_cache_len,
-                                                                     head_size,
-                                                                     unpad_to_pad_idx.data(),
-                                                                     qkv.data(),
-                                                                     unpad_qkv.data());
+    CUDA_LAUNCH(fused_transpose_unpad_kernel, n_threads, threads_per_block)(num_input_tokens,
+                                                                            q_head_num,
+                                                                            q_cache_len,
+                                                                            head_size,
+                                                                            unpad_to_pad_idx.data(),
+                                                                            qkv.data(),
+                                                                            unpad_qkv.data());
     CUDA_KERNEL_LAUNCH_CHECK();
 }
 

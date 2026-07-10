@@ -6,11 +6,11 @@
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 
-__global__ void update_q_kv_lens(const unsigned int batch_size,
-                                 const unsigned int *q_lens,
-                                 unsigned int *kv_lens,
-                                 unsigned int *max_q_len,
-                                 unsigned int *max_kv_len)
+__global__ void update_q_kv_lens_kernel(const unsigned int batch_size,
+                                        const unsigned int *q_lens,
+                                        unsigned int *kv_lens,
+                                        unsigned int *max_q_len,
+                                        unsigned int *max_kv_len)
 {
     extern __shared__ unsigned int smem[];
     unsigned int tid = threadIdx.x;
@@ -51,11 +51,11 @@ void launch_update_q_kv_lens(const Tensor<unsigned int> &q_lens,
     assert(q_lens.shape()[0] <= threads_per_block.x && "Batch size is too large");
     max_q_len.to_device();
     max_kv_len.to_device();
-    CUDA_LAUNCH_SHAREDMEM(update_q_kv_lens, n_threads, threads_per_block, shared_mem_bytes)(q_lens.shape()[0],
-                                                                                            q_lens.data(),
-                                                                                            kv_lens.data(),
-                                                                                            max_q_len.data(),
-                                                                                            max_kv_len.data());
+    CUDA_LAUNCH_SHAREDMEM(update_q_kv_lens_kernel, n_threads, threads_per_block, shared_mem_bytes)(q_lens.shape()[0],
+                                                                                                   q_lens.data(),
+                                                                                                   kv_lens.data(),
+                                                                                                   max_q_len.data(),
+                                                                                                   max_kv_len.data());
     CUDA_KERNEL_LAUNCH_CHECK();
     max_q_len.to_host_pinned();
     max_kv_len.to_host_pinned();

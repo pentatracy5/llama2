@@ -9,16 +9,16 @@
 #include <device_launch_parameters.h>
 
 template <typename T>
-__global__ void fused_reshape_rope_kvcache_llama2_decode(const unsigned int batch_size,
-                                                         const unsigned int kv_cache_len,
-                                                         const unsigned int q_head_num,
-                                                         const unsigned int kv_head_num,
-                                                         const unsigned char *is_done,
-                                                         const unsigned int *kv_lens,
-                                                         const T *input,
-                                                         T *output_q,
-                                                         T *output_k,
-                                                         T *output_v)
+__global__ void fused_reshape_rope_kvcache_llama2_decode_kernel(const unsigned int batch_size,
+                                                                const unsigned int kv_cache_len,
+                                                                const unsigned int q_head_num,
+                                                                const unsigned int kv_head_num,
+                                                                const unsigned char *is_done,
+                                                                const unsigned int *kv_lens,
+                                                                const T *input,
+                                                                T *output_q,
+                                                                T *output_k,
+                                                                T *output_v)
 {
     constexpr unsigned int VEC4_SIZE = 4;
     using VEC4 = typename VecN<T, VEC4_SIZE>;
@@ -100,16 +100,16 @@ void launch_fused_reshape_rope_kvcache_llama2_decode(const Tensor<T> &input,
     assert(kv_cache_len == v.shape()[2] && "k v cache length do not match");
     const dim3 threads_per_block{WARP_SIZE, THREADS_PER_BLOCK / WARP_SIZE};
     const dim3 n_threads{std::min(NUM_BLOCKS_X, batch_size) * threads_per_block.x, threads_per_block.y};
-    CUDA_LAUNCH(fused_reshape_rope_kvcache_llama2_decode, n_threads, threads_per_block)(batch_size,
-                                                                                        kv_cache_len,
-                                                                                        q_head_num,
-                                                                                        kv_head_num,
-                                                                                        is_done.data(),
-                                                                                        kv_lens.data(),
-                                                                                        input.data(),
-                                                                                        q.data(),
-                                                                                        k.data(),
-                                                                                        v.data());
+    CUDA_LAUNCH(fused_reshape_rope_kvcache_llama2_decode_kernel, n_threads, threads_per_block)(batch_size,
+                                                                                               kv_cache_len,
+                                                                                               q_head_num,
+                                                                                               kv_head_num,
+                                                                                               is_done.data(),
+                                                                                               kv_lens.data(),
+                                                                                               input.data(),
+                                                                                               q.data(),
+                                                                                               k.data(),
+                                                                                               v.data());
     CUDA_KERNEL_LAUNCH_CHECK();
 }
 

@@ -17,7 +17,7 @@ __global__ void fused_pad_reshape_transpose_rope_kvcache(const unsigned int num_
                                                          const unsigned int head_dim,
                                                          const unsigned int *q_lens,
                                                          const unsigned int *kv_lens,
-                                                         const unsigned int *unpad_to_padded_idx,
+                                                         const unsigned int *unpad_to_pad_idx,
                                                          const T *input,
                                                          T *output_q,
                                                          T *output_k,
@@ -38,7 +38,7 @@ __global__ void fused_pad_reshape_transpose_rope_kvcache(const unsigned int num_
     unsigned int idx = blockIdx.x;
     while (idx < num_input_tokens)
     {
-        const unsigned int padded_idx = unpad_to_padded_idx[idx];
+        const unsigned int padded_idx = unpad_to_pad_idx[idx];
         const unsigned int seq_idx = padded_idx / q_cache_len;
         const unsigned int token_idx = padded_idx - q_cache_len * seq_idx;
         const unsigned int kv_len = kv_lens[seq_idx];
@@ -86,7 +86,7 @@ template <typename T>
 void launch_fused_pad_reshape_transpose_rope_kvcache(const Tensor<T> &input,
                                                      const Tensor<unsigned int> &q_lens,
                                                      const Tensor<unsigned int> &kv_lens,
-                                                     const Tensor<unsigned int> &unpad_to_padded_idx,
+                                                     const Tensor<unsigned int> &unpad_to_pad_idx,
                                                      Tensor<T> &q,
                                                      Tensor<T> &k,
                                                      Tensor<T> &v)
@@ -117,7 +117,7 @@ void launch_fused_pad_reshape_transpose_rope_kvcache(const Tensor<T> &input,
                                                                                         head_dim,
                                                                                         q_lens.data(),
                                                                                         kv_lens.data(),
-                                                                                        unpad_to_padded_idx.data(),
+                                                                                        unpad_to_pad_idx.data(),
                                                                                         input.data(),
                                                                                         q.data(),
                                                                                         k.data(),
@@ -128,7 +128,7 @@ void launch_fused_pad_reshape_transpose_rope_kvcache(const Tensor<T> &input,
 template void launch_fused_pad_reshape_transpose_rope_kvcache<float>(const Tensor<float> &input,
                                                                      const Tensor<unsigned int> &q_lens,
                                                                      const Tensor<unsigned int> &kv_lens,
-                                                                     const Tensor<unsigned int> &unpad_to_padded_idx,
+                                                                     const Tensor<unsigned int> &unpad_to_pad_idx,
                                                                      Tensor<float> &q,
                                                                      Tensor<float> &k,
                                                                      Tensor<float> &v);
@@ -136,7 +136,7 @@ template void launch_fused_pad_reshape_transpose_rope_kvcache<float>(const Tenso
 template void launch_fused_pad_reshape_transpose_rope_kvcache<half>(const Tensor<half> &input,
                                                                     const Tensor<unsigned int> &q_lens,
                                                                     const Tensor<unsigned int> &kv_lens,
-                                                                    const Tensor<unsigned int> &unpad_to_padded_idx,
+                                                                    const Tensor<unsigned int> &unpad_to_pad_idx,
                                                                     Tensor<half> &q,
                                                                     Tensor<half> &k,
                                                                     Tensor<half> &v);

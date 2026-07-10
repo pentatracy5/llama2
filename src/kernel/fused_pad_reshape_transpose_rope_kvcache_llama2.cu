@@ -16,7 +16,7 @@ __global__ void fused_pad_reshape_transpose_rope_kvcache_llama2(const unsigned i
                                                                 const unsigned int kv_head_num,
                                                                 const unsigned int *q_lens,
                                                                 const unsigned int *kv_lens,
-                                                                const unsigned int *unpad_to_padded_idx,
+                                                                const unsigned int *unpad_to_pad_idx,
                                                                 const T *input,
                                                                 T *output_q,
                                                                 T *output_k,
@@ -44,7 +44,7 @@ __global__ void fused_pad_reshape_transpose_rope_kvcache_llama2(const unsigned i
     unsigned int idx = blockIdx.x;
     while (idx < num_input_tokens)
     {
-        const unsigned int padded_idx = unpad_to_padded_idx[idx];
+        const unsigned int padded_idx = unpad_to_pad_idx[idx];
         const unsigned int seq_idx = padded_idx / q_cache_len;
         const unsigned int token_idx = padded_idx - q_cache_len * seq_idx;
         const unsigned int kv_len = kv_lens[seq_idx];
@@ -78,7 +78,7 @@ template <typename T>
 void launch_fused_pad_reshape_transpose_rope_kvcache_llama2(const Tensor<T> &input,
                                                             const Tensor<unsigned int> &q_lens,
                                                             const Tensor<unsigned int> &kv_lens,
-                                                            const Tensor<unsigned int> &unpad_to_padded_idx,
+                                                            const Tensor<unsigned int> &unpad_to_pad_idx,
                                                             Tensor<T> &q,
                                                             Tensor<T> &k,
                                                             Tensor<T> &v)
@@ -108,7 +108,7 @@ void launch_fused_pad_reshape_transpose_rope_kvcache_llama2(const Tensor<T> &inp
                                                                                                kv_head_num,
                                                                                                q_lens.data(),
                                                                                                kv_lens.data(),
-                                                                                               unpad_to_padded_idx.data(),
+                                                                                               unpad_to_pad_idx.data(),
                                                                                                input.data(),
                                                                                                q.data(),
                                                                                                k.data(),
@@ -119,7 +119,7 @@ void launch_fused_pad_reshape_transpose_rope_kvcache_llama2(const Tensor<T> &inp
 template void launch_fused_pad_reshape_transpose_rope_kvcache_llama2<float>(const Tensor<float> &input,
                                                                             const Tensor<unsigned int> &q_lens,
                                                                             const Tensor<unsigned int> &kv_lens,
-                                                                            const Tensor<unsigned int> &unpad_to_padded_idx,
+                                                                            const Tensor<unsigned int> &unpad_to_pad_idx,
                                                                             Tensor<float> &q,
                                                                             Tensor<float> &k,
                                                                             Tensor<float> &v);
@@ -127,7 +127,7 @@ template void launch_fused_pad_reshape_transpose_rope_kvcache_llama2<float>(cons
 template void launch_fused_pad_reshape_transpose_rope_kvcache_llama2<half>(const Tensor<half> &input,
                                                                            const Tensor<unsigned int> &q_lens,
                                                                            const Tensor<unsigned int> &kv_lens,
-                                                                           const Tensor<unsigned int> &unpad_to_padded_idx,
+                                                                           const Tensor<unsigned int> &unpad_to_pad_idx,
                                                                            Tensor<half> &q,
                                                                            Tensor<half> &k,
                                                                            Tensor<half> &v);

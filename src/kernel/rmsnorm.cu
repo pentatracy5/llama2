@@ -56,20 +56,17 @@ __global__ void fused_add_residual_rmsnorm_kernel(const unsigned int num_input_t
         while (idx < vec_embed_dim)
         {
             VECTYPE in = vec_x[token_idx * vec_embed_dim + idx];
-            VECTYPE res;
             if constexpr (add_residual)
-                res = vec_residual[token_idx * vec_embed_dim + idx];
+            {
+                in += vec_residual[token_idx * vec_embed_dim + idx];
+                vec_x[token_idx * vec_embed_dim + idx] = in;
+            }
+            in *= in;
 #pragma unroll vlen
             for (unsigned int i = 0; i < vlen; i++)
 #pragma unroll shared_vlen
                 for (unsigned int j = 0; j < shared_vlen; j++)
-                {
-                    if constexpr (add_residual)
-                        in[i][j] += res[i][j];
-                    variance += float(in[i][j] * in[i][j]);
-                }
-            if constexpr (add_residual)
-                vec_x[token_idx * vec_embed_dim + idx] = in;
+                    variance += float(in[i][j]);
             idx += idx_stride;
         }
 

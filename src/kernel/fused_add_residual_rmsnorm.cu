@@ -1,4 +1,4 @@
-#include <kernel/rmsnorm.h>
+#include <kernel/fused_add_residual_rmsnorm.h>
 #include <kernel/reduction.cuh>
 #include <core/Tensor.cuh>
 #include <common/types.h>

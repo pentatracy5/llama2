@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include <kernel/rmsnorm.h>
+#include <kernel/fused_add_residual_rmsnorm.h>
 #include <core/Tensor.cuh>
 #include <common/config.h>
 #include <vector>
@@ -18,14 +18,14 @@
 // output[t, d]       = x_after[t, d] * weight[d] * inv_rms[t]
 // inv_rms[t]         = 1 / sqrt(mean(x_after[t]^2) + eps)
 // ------------------------------------------------------------------
-static void compute_expected_fused_rmsnorm(const std::vector<float> &x_h,
-                                           const std::vector<float> &residual_h,
-                                           const std::vector<float> &weight_h,
-                                           unsigned int num_tokens,
-                                           unsigned int embed_dim,
-                                           bool add_residual,
-                                           std::vector<float> &expected_x_after,
-                                           std::vector<float> &expected_residual_out)
+static void compute_expected_fused_add_residual_rmsnorm(const std::vector<float> &x_h,
+                                                        const std::vector<float> &residual_h,
+                                                        const std::vector<float> &weight_h,
+                                                        unsigned int num_tokens,
+                                                        unsigned int embed_dim,
+                                                        bool add_residual,
+                                                        std::vector<float> &expected_x_after,
+                                                        std::vector<float> &expected_residual_out)
 {
     const unsigned int numel = num_tokens * embed_dim;
     expected_x_after.resize(numel);
@@ -106,12 +106,12 @@ static std::vector<float> vector_to_float(const std::vector<T> &src)
 // Generic runner: copy data to GPU, launch kernel, copy back, verify.
 // ------------------------------------------------------------------
 template <typename T, bool add_residual>
-static void run_fused_rmsnorm_test(const std::vector<float> &x_h,
-                                   const std::vector<float> &residual_h,
-                                   const std::vector<float> &weight_h,
-                                   unsigned int num_tokens,
-                                   unsigned int embed_dim,
-                                   float tolerance)
+static void run_fused_add_residual_rmsnorm_test(const std::vector<float> &x_h,
+                                                const std::vector<float> &residual_h,
+                                                const std::vector<float> &weight_h,
+                                                unsigned int num_tokens,
+                                                unsigned int embed_dim,
+                                                float tolerance)
 {
     const unsigned int numel = num_tokens * embed_dim;
     ASSERT_EQ(x_h.size(), numel);
@@ -151,8 +151,8 @@ static void run_fused_rmsnorm_test(const std::vector<float> &x_h,
 
     std::vector<float> expected_x_after;
     std::vector<float> expected_residual_out;
-    compute_expected_fused_rmsnorm(x_h, residual_h, weight_h, num_tokens, embed_dim,
-                                   add_residual, expected_x_after, expected_residual_out);
+    compute_expected_fused_add_residual_rmsnorm(x_h, residual_h, weight_h, num_tokens, embed_dim,
+                                                add_residual, expected_x_after, expected_residual_out);
 
     for (unsigned int idx = 0; idx < numel; ++idx)
     {
@@ -176,7 +176,7 @@ TEST(RMSNormTest, SingleTokenUnitWeights)
     const std::vector<float> residual_h(num_tokens * embed_dim, 0.0f);
     const std::vector<float> weight_h(embed_dim, 1.0f);
 
-    run_fused_rmsnorm_test<float, false>(x_h, residual_h, weight_h, num_tokens, embed_dim, 1e-4f);
+    run_fused_add_residual_rmsnorm_test<float, false>(x_h, residual_h, weight_h, num_tokens, embed_dim, 1e-4f);
 }
 
 TEST(RMSNormTest, MultipleTokensWithWeights)
@@ -200,7 +200,7 @@ TEST(RMSNormTest, MultipleTokensWithWeights)
     for (unsigned int d = 0; d < embed_dim; ++d)
         weight_h.push_back(static_cast<float>(d + 1));
 
-    run_fused_rmsnorm_test<float, false>(x_h, residual_h, weight_h, num_tokens, embed_dim, 1e-4f);
+    run_fused_add_residual_rmsnorm_test<float, false>(x_h, residual_h, weight_h, num_tokens, embed_dim, 1e-4f);
 }
 
 TEST(RMSNormTest, ConstantInputAndWeights)
@@ -212,7 +212,7 @@ TEST(RMSNormTest, ConstantInputAndWeights)
     const std::vector<float> residual_h(num_tokens * embed_dim, 0.0f);
     const std::vector<float> weight_h(embed_dim, 0.5f);
 
-    run_fused_rmsnorm_test<float, false>(x_h, residual_h, weight_h, num_tokens, embed_dim, 1e-4f);
+    run_fused_add_residual_rmsnorm_test<float, false>(x_h, residual_h, weight_h, num_tokens, embed_dim, 1e-4f);
 }
 
 TEST(RMSNormTest, SmallDimMultipleOfVecLen)
@@ -228,7 +228,7 @@ TEST(RMSNormTest, SmallDimMultipleOfVecLen)
     const std::vector<float> residual_h(num_tokens * embed_dim, 0.0f);
     const std::vector<float> weight_h = {0.5f, 1.0f, 1.5f, 2.0f};
 
-    run_fused_rmsnorm_test<float, false>(x_h, residual_h, weight_h, num_tokens, embed_dim, 1e-4f);
+    run_fused_add_residual_rmsnorm_test<float, false>(x_h, residual_h, weight_h, num_tokens, embed_dim, 1e-4f);
 }
 
 TEST(RMSNormTest, LargeBatchRandomValues)
@@ -252,7 +252,7 @@ TEST(RMSNormTest, LargeBatchRandomValues)
     for (unsigned int d = 0; d < embed_dim; ++d)
         weight_h[d] = weight_dist(gen);
 
-    run_fused_rmsnorm_test<float, false>(x_h, residual_h, weight_h, num_tokens, embed_dim, 1e-3f);
+    run_fused_add_residual_rmsnorm_test<float, false>(x_h, residual_h, weight_h, num_tokens, embed_dim, 1e-3f);
 }
 
 // ------------------------------------------------------------------
@@ -268,7 +268,7 @@ TEST(FusedAddResidualRMSNormTest, SingleToken)
         0.5f, -0.5f, 1.0f, -1.0f, 0.25f, -0.25f, 0.125f, -0.125f};
     const std::vector<float> weight_h(embed_dim, 1.0f);
 
-    run_fused_rmsnorm_test<float, true>(x_h, residual_h, weight_h, num_tokens, embed_dim, 1e-4f);
+    run_fused_add_residual_rmsnorm_test<float, true>(x_h, residual_h, weight_h, num_tokens, embed_dim, 1e-4f);
 }
 
 TEST(FusedAddResidualRMSNormTest, MultipleTokensWithWeights)
@@ -301,7 +301,7 @@ TEST(FusedAddResidualRMSNormTest, MultipleTokensWithWeights)
     for (unsigned int d = 0; d < embed_dim; ++d)
         weight_h.push_back(static_cast<float>(d + 1));
 
-    run_fused_rmsnorm_test<float, true>(x_h, residual_h, weight_h, num_tokens, embed_dim, 1e-4f);
+    run_fused_add_residual_rmsnorm_test<float, true>(x_h, residual_h, weight_h, num_tokens, embed_dim, 1e-4f);
 }
 
 TEST(FusedAddResidualRMSNormTest, ResidualCancelsX)
@@ -316,7 +316,7 @@ TEST(FusedAddResidualRMSNormTest, ResidualCancelsX)
         v = -1.5f;
     const std::vector<float> weight_h(embed_dim, 2.0f);
 
-    run_fused_rmsnorm_test<float, true>(x_h, residual_h, weight_h, num_tokens, embed_dim, 1e-4f);
+    run_fused_add_residual_rmsnorm_test<float, true>(x_h, residual_h, weight_h, num_tokens, embed_dim, 1e-4f);
 }
 
 TEST(FusedAddResidualRMSNormTest, LargeBatchRandomValues)
@@ -341,7 +341,7 @@ TEST(FusedAddResidualRMSNormTest, LargeBatchRandomValues)
     for (unsigned int d = 0; d < embed_dim; ++d)
         weight_h[d] = weight_dist(gen);
 
-    run_fused_rmsnorm_test<float, true>(x_h, residual_h, weight_h, num_tokens, embed_dim, 1e-3f);
+    run_fused_add_residual_rmsnorm_test<float, true>(x_h, residual_h, weight_h, num_tokens, embed_dim, 1e-3f);
 }
 
 // ------------------------------------------------------------------
@@ -356,7 +356,7 @@ TEST(RMSNormHalfTest, SingleTokenUnitWeights)
     const std::vector<float> residual_h(num_tokens * embed_dim, 0.0f);
     const std::vector<float> weight_h(embed_dim, 1.0f);
 
-    run_fused_rmsnorm_test<half, false>(x_h, residual_h, weight_h, num_tokens, embed_dim, 1e-3f);
+    run_fused_add_residual_rmsnorm_test<half, false>(x_h, residual_h, weight_h, num_tokens, embed_dim, 1e-3f);
 }
 
 TEST(RMSNormHalfTest, MultipleTokensWithWeights)
@@ -380,7 +380,7 @@ TEST(RMSNormHalfTest, MultipleTokensWithWeights)
     for (unsigned int d = 0; d < embed_dim; ++d)
         weight_h.push_back(static_cast<float>(d + 1));
 
-    run_fused_rmsnorm_test<half, false>(x_h, residual_h, weight_h, num_tokens, embed_dim, 2e-2f);
+    run_fused_add_residual_rmsnorm_test<half, false>(x_h, residual_h, weight_h, num_tokens, embed_dim, 2e-2f);
 }
 
 TEST(RMSNormHalfTest, ConstantInputAndWeights)
@@ -392,7 +392,7 @@ TEST(RMSNormHalfTest, ConstantInputAndWeights)
     const std::vector<float> residual_h(num_tokens * embed_dim, 0.0f);
     const std::vector<float> weight_h(embed_dim, 0.5f);
 
-    run_fused_rmsnorm_test<half, false>(x_h, residual_h, weight_h, num_tokens, embed_dim, 1e-3f);
+    run_fused_add_residual_rmsnorm_test<half, false>(x_h, residual_h, weight_h, num_tokens, embed_dim, 1e-3f);
 }
 
 TEST(RMSNormHalfTest, LargeBatchRandomValues)
@@ -416,7 +416,7 @@ TEST(RMSNormHalfTest, LargeBatchRandomValues)
     for (unsigned int d = 0; d < embed_dim; ++d)
         weight_h[d] = weight_dist(gen);
 
-    run_fused_rmsnorm_test<half, false>(x_h, residual_h, weight_h, num_tokens, embed_dim, 1e-2f);
+    run_fused_add_residual_rmsnorm_test<half, false>(x_h, residual_h, weight_h, num_tokens, embed_dim, 1e-2f);
 }
 
 // ------------------------------------------------------------------
@@ -432,7 +432,7 @@ TEST(FusedAddResidualRMSNormHalfTest, SingleToken)
         0.5f, -0.5f, 1.0f, -1.0f, 0.25f, -0.25f, 0.125f, -0.125f};
     const std::vector<float> weight_h(embed_dim, 1.0f);
 
-    run_fused_rmsnorm_test<half, true>(x_h, residual_h, weight_h, num_tokens, embed_dim, 1e-3f);
+    run_fused_add_residual_rmsnorm_test<half, true>(x_h, residual_h, weight_h, num_tokens, embed_dim, 1e-3f);
 }
 
 TEST(FusedAddResidualRMSNormHalfTest, MultipleTokensWithWeights)
@@ -465,7 +465,7 @@ TEST(FusedAddResidualRMSNormHalfTest, MultipleTokensWithWeights)
     for (unsigned int d = 0; d < embed_dim; ++d)
         weight_h.push_back(static_cast<float>(d + 1));
 
-    run_fused_rmsnorm_test<half, true>(x_h, residual_h, weight_h, num_tokens, embed_dim, 5e-2f);
+    run_fused_add_residual_rmsnorm_test<half, true>(x_h, residual_h, weight_h, num_tokens, embed_dim, 5e-2f);
 }
 
 TEST(FusedAddResidualRMSNormHalfTest, LargeBatchRandomValues)
@@ -490,5 +490,5 @@ TEST(FusedAddResidualRMSNormHalfTest, LargeBatchRandomValues)
     for (unsigned int d = 0; d < embed_dim; ++d)
         weight_h[d] = weight_dist(gen);
 
-    run_fused_rmsnorm_test<half, true>(x_h, residual_h, weight_h, num_tokens, embed_dim, 1e-2f);
+    run_fused_add_residual_rmsnorm_test<half, true>(x_h, residual_h, weight_h, num_tokens, embed_dim, 1e-2f);
 }
